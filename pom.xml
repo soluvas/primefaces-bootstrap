@@ -29,7 +29,12 @@
 			<artifactId>primefaces</artifactId>
 			<version>${primefaces.version}</version>
 		</dependency>
-	
+		<dependency>
+			<groupId>commons-fileupload</groupId>
+			<artifactId>commons-fileupload</artifactId>
+			<version>1.2.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>com.ocpsoft</groupId>
 			<artifactId>prettyfaces-jsf2</artifactId>
