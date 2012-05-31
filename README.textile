@@ -1,0 +1,19 @@
+h1. Soluvas Starter Web Application
+
+h2. Curl Configuration
+
+bc. export BASE_URI='http://localhost:9080/primefaces-bootstrap'
+
+h2. JCR Resource
+
+TODO
+
+h2. Game Resource
+
+h3. List games
+
+bc. curl $BASE_URI/api/browser/game/
+
+h3. Create Game
+
+bc. curl -H 'Content-type: application/json' -d '{"name": "Wiwahahaha", "releaseDate": 2009}' $BASE_URI/api/browser/game/

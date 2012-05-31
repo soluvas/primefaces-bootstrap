@@ -1,0 +1,19 @@
+<Repository>
+	<FileSystem class="org.apache.jackrabbit.core.fs.mem.MemoryFileSystem">
+	</FileSystem>
+	<Security appName="Jackrabbit">
+<!-- 		<SecurityManager class="org.apache.jackrabbit.core.DefaultSecurityManager" workspaceName="security" /> -->
+		<AccessManager class="org.apache.jackrabbit.core.security.SimpleAccessManager" />
+		<LoginModule class="org.apache.jackrabbit.core.security.simple.SimpleLoginModule" />
+	</Security>
+	<Workspaces rootPath="${rep.home}/workspaces" defaultWorkspace="default" />
+	<Workspace name="default">
+		<FileSystem class="org.apache.jackrabbit.core.fs.mem.MemoryFileSystem" />
+		<PersistenceManager class="org.apache.jackrabbit.core.persistence.mem.InMemPersistenceManager" />
+	</Workspace>
+	<Versioning rootPath="${rep.home}/version">
+		<FileSystem class="org.apache.jackrabbit.core.fs.mem.MemoryFileSystem" />
+		<PersistenceManager class="org.apache.jackrabbit.core.persistence.mem.InMemPersistenceManager" />
+	</Versioning>
+	<PersistenceManager class="org.apache.jackrabbit.core.persistence.mem.InMemPersistenceManager" />
+</Repository>
