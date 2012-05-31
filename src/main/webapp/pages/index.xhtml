@@ -14,19 +14,35 @@
 jQuery(document).ready(function() {
 	var Game = Backbone.Model.extend({
 		initialize: function() {
-			console.log("Hello");
+			console.log(this.name);
 		},
 		defaults: {
 			name: 'Default title',
 			releaseDate: 2011,
 		}
 	});
+	var GameCollection = Backbone.Collection.extend({
+		model: Game,
+		url: '#{request.contextPath}/api/browser/game'
+	});
 
 	var portal = new Game({releaseDate: 2012});
+	portal.url = '#{request.contextPath}/api/browser/game/gatotkaca';
+	portal.id = 'gatotkaca';
 	console.log("name is", portal.get('name'));
 	portal.set({name: 'Updated'});
 	console.log("new name is", portal.get('name'));
-	portal.save();
+	portal.save(null, {success: function() {
+		portal.set({name: 'Yet another'});
+		portal.save();
+	}});
+
+	var games = new GameCollection();
+	games.fetch({success: function() {
+		console.log(games.at(0).get('name'), games.at(1).get('name'))
+	}});
+	
+	
 });
 </script>	
 	
