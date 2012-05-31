@@ -100,6 +100,11 @@
 				<extensions>false</extensions>
 				<configuration>
 					<failOnMissingWebXml>false</failOnMissingWebXml>
+					<archive>
+						<manifestEntries>
+							<Dependencies>org.hibernate export, org.slf4j, org.infinispan, org.codehaus.jackson.jackson-mapper-asl export</Dependencies>
+						</manifestEntries>
+					</archive>
 				</configuration>
 			</plugin>
 		</plugins>
