@@ -37,6 +37,21 @@
 		<dispatcher>FORWARD</dispatcher>
 	</filter-mapping>
 	
+    <servlet>
+        <description>MeteorServlet</description>
+        <servlet-name>MeteorServlet</servlet-name>
+        <servlet-class>org.atmosphere.cpr.MeteorServlet</servlet-class>
+        <init-param>
+            <param-name>org.atmosphere.servlet</param-name>
+            <param-value>org.soluvas.primefacesbootstrap.MeteorChat</param-value>
+        </init-param>
+        <load-on-startup>0</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>MeteorServlet</servlet-name>
+        <url-pattern>/meteor</url-pattern>
+    </servlet-mapping>
+
 	<security-constraint>
 		<display-name>pages</display-name>
 		<web-resource-collection>

@@ -17,3 +17,15 @@ bc. curl $BASE_URI/api/browser/game/
 h3. Create Game
 
 bc. curl -H 'Content-type: application/json' -d '{"name": "Wiwahahaha", "releaseDate": 2009}' $BASE_URI/api/browser/game/
+
+h2. Push
+
+h3. Broadcasting something via curl
+
+bc. curl -v $BASE_URI/meteor -d 'X'
+
+The data content is not used, because it actually needs to use jQuery atmosphere client.
+
+h3. Broadcast something via JavaScript in browser
+
+bc. subSocket.push(JSON.stringify({ author: "Neni", text: "Yoha" }));
