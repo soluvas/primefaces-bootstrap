@@ -2,6 +2,7 @@ package org.soluvas.primefacesbootstrap;
 
 import java.io.File;
 import java.net.URI;
+import java.util.Date;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -28,6 +29,7 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.jackrabbit.core.TransientRepository;
 import org.atmosphere.cpr.BroadcasterFactory;
 import org.atmosphere.cpr.DefaultBroadcaster;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.soluvas.json.JsonUtils;
@@ -126,8 +128,14 @@ public class CommentResource {
 		log.info("delete comment {}", commentId);
 		try {
 			Node commentNode = commentRoot.getNode(commentId);
+			Comment comment = new Comment(commentNode);
 			commentNode.remove();
 			session.save();
+			
+			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
+			BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
+				.broadcast(JsonUtils.asJson(push));
+			
 			return Response.noContent().build();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
@@ -140,7 +148,15 @@ public class CommentResource {
 		try {
 			Node commentNode = commentRoot.getNode(commentId);
 			commentNode.setProperty("body", comment.getBody());
+			commentNode.setProperty("lastModified", new DateTime().toGregorianCalendar());
 			session.save();
+			
+			Comment updatedComment = new Comment(commentNode);
+			
+			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
+			BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
+				.broadcast(JsonUtils.asJson(push));
+			
 			return comment;
 		} catch (Exception e) {
 			throw new RuntimeException(e);

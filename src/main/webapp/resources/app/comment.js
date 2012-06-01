@@ -22,6 +22,18 @@ request.onMessage = function (response) {
         		comments.push(json.data);
 //        	}
         }
+        if (json.op == 'delete' && json.collection == 'comment') {
+        	console.info('Deleting comment', json.data.id);
+        	var comment = comments.get(json.data.id);
+        	if (comment != null)
+        		comment.destroy();
+        }
+        if (json.op == 'update' && json.collection == 'comment') {
+        	console.info('Updating comment', json.data.id);
+        	var comment = comments.get(json.data.id);
+        	if (comment != null)
+        		comment.set({'body': json.data.body, 'lastModified': json.data.lastModified});
+        }
     } catch (e) {
         console.log('This doesn\'t look like a valid JSON: ', message.data);
         return;
@@ -57,13 +69,16 @@ var CommentList = Backbone.Collection.extend({
 		view.$el.hide();
 		jQuery('#comment-stream').append(view.el);
 		view.$el.fadeIn('slow');
+//		comment.view = view;
+//		comment.on('destroy', this.removeView);
 	},
 	onReset: function(comments) {
 		console.log('comment list reset', this.length);
-		this.each(function(e) {
-			console.log("Process comment", e);
-			var view = new CommentView({model: e}).render();
+		this.each(function(comment) {
+			console.log("Process comment", comment);
+			var view = new CommentView({model: comment}).render();
 			jQuery('#comment-stream').append(view.el);
+//			comment.on('destroy', function(){ view.$el.fadeOut('slow', function(){ view.remove(); }); });
 		});
 	}
 });
@@ -80,9 +95,8 @@ var CommentView = Backbone.View.extend({
 	tagName: 'li',
 	className: 'comment',
 	initialize: function(args) {
-		//_.bindAll(this, 'changeName');
-		//this.model.bind('change:name', this.changeName);
-		//this.render();
+		this.model.on('change', this.replace, this);
+		this.model.on('destroy', this.fadeAndRemove, this);
 	},
 	events: {
 		'click .edit'  : 'edit',
@@ -95,9 +109,6 @@ var CommentView = Backbone.View.extend({
 		this.$el.html(template);
 		return this;
 	},
-//	changeName: function() {
-//		console.log("Change name", this);
-//	},
 	edit: function() {
 		console.log('Edit', this.model);
 		this.model.set('body', 'baru yaaaa');
@@ -106,19 +117,20 @@ var CommentView = Backbone.View.extend({
 	deleteEntry: function() {
 		console.log('Delete', this.model);
 		this.model.destroy();
+	},
+	fadeAndRemove: function() {
+		var view = this;
+		this.$el.fadeOut('slow', function(){ view.remove(); });
+	},
+	replace: function() {
+		var view = this;
+		this.$el.slideUp('fast', function(){ view.render(); view.$el.slideDown('slow'); });
 	}
 });
 
 jQuery(document).ready(function() {
-//	console.log("name is", portal.get('name'));
-//	portal.set({name: 'Updated'});
-//	console.log("new name is", portal.get('name'));
-//	portal.save(null, {success: function() {
-//		portal.set({name: 'Yet another'});
-//		portal.save();
-//	}});
 
-	console.log("Fetching comments...");
+	console.info("Fetching comments...");
 	comments.fetch();
 	
 	// Bind
