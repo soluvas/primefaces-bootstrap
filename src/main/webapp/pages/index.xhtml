@@ -9,68 +9,12 @@
 	<div class="hero-unit">
 		<h1>Hello, world!</h1>
 	</div>
-
-<script type="text/javascript">
-jQuery(document).ready(function() {
-	var Game = Backbone.Model.extend({
-		initialize: function() {
-			console.log(this.name);
-		},
-		defaults: {
-			name: 'Default title',
-			releaseDate: 2011,
-		}
-	});
-	var GameCollection = Backbone.Collection.extend({
-		model: Game,
-		url: '#{request.contextPath}/api/browser/game'
-	});
-
-	var portal = new Game({releaseDate: 2012});
-	portal.url = '#{request.contextPath}/api/browser/game/gatotkaca';
-	portal.id = 'gatotkaca';
-	console.log("name is", portal.get('name'));
-	portal.set({name: 'Updated'});
-	console.log("new name is", portal.get('name'));
-	portal.save(null, {success: function() {
-		portal.set({name: 'Yet another'});
-		portal.save();
-	}});
-
-	var games = new GameCollection();
-	games.fetch({success: function() {
-		console.log(games.at(0).get('name'), games.at(1).get('name'))
-	}});
-
-	var socket = jQuery.atmosphere;
-    var request = { url: '#{request.contextPath}/meteor',
-            contentType : "application/json",
-            logLevel : 'debug',
-            transport : 'websocket' ,
-            fallbackTransport: 'long-polling'};
 	
-    request.onOpen = function(response) {
-        console.log('Atmosphere connected using ' + response.transport);
-    };
-    request.onMessage = function (response) {
-        var message = response.responseBody;
-        try {
-            var json = JSON.parse(message);
-            console.log(json);
-        } catch (e) {
-            console.log('This doesn\'t look like a valid JSON: ', message.data);
-            return;
-        }
-    }
-    request.onError = function(response) {
-        console.error('Sorry, but there\'s some problem with your '
-            + 'socket or the server is down');
-    };
-    subSocket = socket.subscribe(request);
-    
-});
-</script>	
 	
+	<input type="text" id="commentBox" value="Enter comment..."/>
+	<button id="commentBtn" class="btn">Comment</button>
+	
+	<h:outputScript library="app" name="game.js"/>
 </ui:define>
 
 </ui:composition>
