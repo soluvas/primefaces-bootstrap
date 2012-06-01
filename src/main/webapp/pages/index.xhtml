@@ -22,7 +22,7 @@
 	<button id="commentBtn" class="btn">Comment</button>
 	
 	<script type="text/template" id="comment-template"><![CDATA[
-		<strong><%= authorName %></strong> <div class="body"><%= body %><span style="color: #888; font-size: 80%;"><%= lastModified %></span></div>
+		<strong><%=authorName%></strong> <div class="body"><%=body%> &middot; <span style="color: #888; font-size: 80%;"><%=lastModified%></span></div>
 		<div class="editor" style="display: none">
 			<input type="text"/>
 			<button class="btn save"><i class="icon-ok"></i></button>

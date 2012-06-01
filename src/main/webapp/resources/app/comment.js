@@ -1,10 +1,9 @@
 // jQuery Atmosphere - Setup push channel
 var socket = jQuery.atmosphere;
-var request = { url: baseUri + 'meteor', // TODO: add sessionId
+var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be per topic, as in subscribe()
         contentType : "application/json",
         logLevel : 'debug',
-        transport : 'websocket',
-        fallbackTransport: 'long-polling'};
+        transport : 'websocket'};
 
 request.onOpen = function(response) {
     console.log('Atmosphere connected using ' + response.transport);
@@ -91,8 +90,12 @@ var freshComment = new Comment;
 var comments = new CommentList;
 
 function stripCdata(str) {
-	return str.substring(9, str.length - 4);
+	return (str+'').replace(/\<\!\[CDATA\[|\]\]\>/g, '');
 }
+function convertTemplate(str) {
+	return str.replace(/\{\{/g, '<%=').replace(/\}\}/g, '%>');
+}
+
 
 var CommentView = Backbone.View.extend({
 	tagName: 'li',
