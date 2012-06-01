@@ -6,6 +6,12 @@
 
 <ui:define name="pageTitle">Soluvas Starter Web Application</ui:define>
 <ui:define name="contentPrimary">
+<style type="text/css">
+.comment {
+	position: relative;
+	display: block;
+}
+</style>
 	<div class="hero-unit">
 		<h1>Hello, world!</h1>
 	</div>
@@ -16,9 +22,15 @@
 	<button id="commentBtn" class="btn">Comment</button>
 	
 	<script type="text/template" id="comment-template"><![CDATA[
-		<strong><%= authorName %></strong> <p><%= body %></p>
-		<button class="btn edit"><i class="icon-edit"></i></button>
-		<button class="btn delete"><i class="icon-remove"></i></button>
+		<strong><%= authorName %></strong> <div class="body"><%= body %><span style="color: #888; font-size: 80%;"><%= lastModified %></span></div>
+		<div class="editor" style="display: none">
+			<input type="text"/>
+			<button class="btn save"><i class="icon-ok"></i></button>
+		</div>
+		<div class="controls" style="position: absolute; top: 0; right: 0; display: none;">
+			<button class="btn edit" title="Edit"><i class="icon-edit"></i></button>
+			<button class="btn delete" title="Delete"><i class="icon-remove"></i></button>
+		</div>
 	]]></script>
 	
 	<!-- paling bawah -->

@@ -25,8 +25,11 @@ request.onMessage = function (response) {
         if (json.op == 'delete' && json.collection == 'comment') {
         	console.info('Deleting comment', json.data.id);
         	var comment = comments.get(json.data.id);
-        	if (comment != null)
+        	if (comment != null) {
+        		// prevent sync
+        		comment.id = null;
         		comment.destroy();
+        	}
         }
         if (json.op == 'update' && json.collection == 'comment') {
         	console.info('Updating comment', json.data.id);
@@ -35,7 +38,7 @@ request.onMessage = function (response) {
         		comment.set({'body': json.data.body, 'lastModified': json.data.lastModified});
         }
     } catch (e) {
-        console.log('This doesn\'t look like a valid JSON: ', message.data);
+        console.error('This doesn\'t look like a valid JSON: ', e, message.data);
         return;
     }
 }
@@ -99,20 +102,48 @@ var CommentView = Backbone.View.extend({
 		this.model.on('destroy', this.fadeAndRemove, this);
 	},
 	events: {
-		'click .edit'  : 'edit',
-		'click .delete': 'deleteEntry'
+		'mouseenter'      : 'showControls',
+		'mouseleave'       : 'hideControls',
+		'click .edit'    : 'startEditing',
+		'click .save'    : 'saveEdit',
+		'click .cancel'  : 'cancelEdit',
+		'click .delete'  : 'deleteEntry',
+			'keypress .editor': 'editorKeypress'
 	},
 	render: function() {
 		console.log("Rendering", this.model.get('body'), this.el);
 		var template = _.template(stripCdata(jQuery('#comment-template').html()),
-				{authorName: this.model.get('authorName'), body: this.model.get('body')});
+				{authorName: this.model.get('authorName'), body: this.model.get('body'), lastModified: this.model.get('lastModified')});
 		this.$el.html(template);
 		return this;
 	},
-	edit: function() {
+	showControls: function() {
+		this.$('.controls').show();
+	},
+	hideControls: function(e) {
+		this.$('.controls').hide();
+	},
+	startEditing: function() {
 		console.log('Edit', this.model);
-		this.model.set('body', 'baru yaaaa');
+		this.$('.body').hide();
+		this.$('.controls').hide();
+		this.$('.editor').show();
+		this.$('.editor input').focus();
+		this.$('.editor input').val(this.model.get('body'));
+	},
+	editorKeypress: function(e) {
+		if (e.which == 13) {
+			e.preventDefault();
+			this.saveEdit();
+		}
+	},
+	saveEdit: function() {
+		this.model.set('body', this.$('.editor input').val());
 		this.model.save();
+	},
+	cancelEdit: function() {
+		this.$('.editor').hide();
+		this.$('.body').show();
 	},
 	deleteEntry: function() {
 		console.log('Delete', this.model);
@@ -138,6 +169,12 @@ jQuery(document).ready(function() {
 		var commentText = jQuery('#commentBox').val();
 		console.log("Comment yaaa", commentText);
 		comments.create({body: commentText}, {wait: true}); // wait is needed, otherwise duplicate because Atmosphere usually got here first
+	});
+	jQuery('#commentBox').bind('keypress', function(e) {
+		if (e.which == 13) {
+			e.preventDefault();
+			jQuery('#commentBtn').trigger('click');
+		}
 	});
 
 	// jQuery Atmosphere
