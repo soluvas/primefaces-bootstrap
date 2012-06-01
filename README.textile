@@ -8,6 +8,25 @@ h2. JCR Resource
 
 TODO
 
+h2. Comment Resource
+
+h3. List Comments
+
+bc. curl http://localhost:9080/primefaces-bootstrap/api/comment/
+
+h3. Create Comment
+
+bc. curl -v -H 'Content-type: application/json' http://localhost:9080/primefaces-bootstrap/api/comment/ -d '{"authorName":"Hendy","body":"Eh keren"}'
+
+h3. Delete Comment
+
+bc. curl -X DELETE http://localhost:9080/primefaces-bootstrap/api/comment/67da80b7-2f0c-43b9-8d13-242f8f441593
+
+h3. Edit Comment
+
+bc. curl -X PUT -H 'Content-type: application/json' http://localhost:9080/primefaces-bootstrap/api/comment/b12b3dd7-dbcb-48ca-ac48-f90750f94656 -d '{"body":"Bagooooos"}'
+
+
 h2. Game Resource
 
 h3. List games

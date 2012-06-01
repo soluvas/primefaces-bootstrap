@@ -10,11 +10,19 @@
 		<h1>Hello, world!</h1>
 	</div>
 	
+	<div id="comment-stream" style="min-height: 100px; border: 1px solid #888888; padding: 10px;"></div>
 	
 	<input type="text" id="commentBox" value="Enter comment..."/>
 	<button id="commentBtn" class="btn">Comment</button>
 	
-	<h:outputScript library="app" name="game.js"/>
+	<script type="text/template" id="comment-template"><![CDATA[
+		<strong><%= authorName %></strong> <p><%= body %></p>
+		<button class="btn edit"><i class="icon-edit"></i></button>
+		<button class="btn delete"><i class="icon-remove"></i></button>
+	]]></script>
+	
+	<!-- paling bawah -->
+	<h:outputScript library="app" name="comment.js"/>
 </ui:define>
 
 </ui:composition>
