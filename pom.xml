@@ -9,6 +9,7 @@
 	
 	<properties>
 		<primefaces.version>3.2</primefaces.version>
+		<infinispan.version>5.1.4.FINAL</infinispan.version>
 	</properties>
 	
 	<dependencyManagement>
@@ -20,6 +21,19 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			
+			<dependency>
+				<groupId>org.infinispan</groupId>
+				<artifactId>infinispan-cdi</artifactId>
+				<version>${infinispan.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.infinispan</groupId>
+				<artifactId>infinispan-core</artifactId>
+				<version>${infinispan.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			
 		</dependencies>
 	</dependencyManagement>
 	
@@ -72,6 +86,11 @@
 			<groupId>com.ocpsoft</groupId>
 			<artifactId>prettyfaces-jsf2</artifactId>
 			<version>3.3.3</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.infinispan</groupId>
+			<artifactId>infinispan-cdi</artifactId>
 		</dependency>
 
 		<dependency>
@@ -153,7 +172,7 @@
 					<failOnMissingWebXml>false</failOnMissingWebXml>
 					<archive>
 						<manifestEntries>
-							<Dependencies>org.hibernate export, org.slf4j, org.infinispan, org.codehaus.jackson.jackson-mapper-asl export</Dependencies>
+							<Dependencies>org.hibernate export, org.slf4j, org.infinispan export, org.codehaus.jackson.jackson-mapper-asl export</Dependencies>
 						</manifestEntries>
 					</archive>
 				</configuration>
