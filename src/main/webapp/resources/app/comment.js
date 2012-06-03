@@ -103,7 +103,7 @@ var CommentView = Backbone.View.extend({
 	tagName: 'li',
 	className: 'comment',
 	initialize: function(args) {
-		_.bindAll(this, 'render');
+		_.bindAll(this, 'render', 'fadeAndRemove', 'remove');
 		this.model.on('change', this.replaceEntry, this);
 		this.model.on('destroy', this.fadeAndRemove, this);
 	},
@@ -114,7 +114,7 @@ var CommentView = Backbone.View.extend({
 		'click .save'    : 'saveEdit',
 		'click .cancel'  : 'cancelEdit',
 		'click .delete'  : 'deleteEntry',
-			'keypress .editor': 'editorKeypress'
+		'keypress .editor': 'editorKeypress'
 	},
 	render: function() {
 		var template = _.template(commentTemplate,
@@ -155,8 +155,7 @@ var CommentView = Backbone.View.extend({
 		this.model.destroy();
 	},
 	fadeAndRemove: function() {
-		var view = this;
-		this.$el.fadeOut('slow', function(){ view.remove(); });
+		this.$el.fadeOut('slow', this.remove);
 	},
 	replaceEntry: function() {
 		var view = this;

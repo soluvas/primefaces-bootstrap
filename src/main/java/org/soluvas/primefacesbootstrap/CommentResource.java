@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.jackrabbit.core.TransientRepository;
 import org.atmosphere.cpr.AtmosphereConfig;
+import org.atmosphere.cpr.Broadcaster;
 import org.atmosphere.cpr.BroadcasterFactory;
 import org.atmosphere.cpr.DefaultBroadcaster;
 import org.atmosphere.plugin.jms.JMSBroadcaster;
@@ -78,6 +79,10 @@ public class CommentResource {
 		session.logout();
 		repository.shutdown();
 	}
+	
+	protected Broadcaster getBroadcaster() {
+		return BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true);
+	}
 
 	@GET
 	public List<Comment> findAll() throws RepositoryException {
@@ -104,8 +109,7 @@ public class CommentResource {
 		session.save();
 		
 		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
-		BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true)
-			.broadcast(JsonUtils.asJson(push));
+		getBroadcaster().broadcast(JsonUtils.asJson(push));
 		
 		return Response.created(URI.create(comment.getId()))
 				.entity(comment).build();
@@ -133,8 +137,7 @@ public class CommentResource {
 			session.save();
 			
 			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
-			BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
-				.broadcast(JsonUtils.asJson(push));
+			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			
 			return Response.noContent().build();
 		} catch (Exception e) {
@@ -154,8 +157,7 @@ public class CommentResource {
 			Comment updatedComment = new Comment(commentNode);
 			
 			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
-			BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
-				.broadcast(JsonUtils.asJson(push));
+			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			
 			return comment;
 		} catch (Exception e) {
