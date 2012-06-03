@@ -1,11 +1,13 @@
 package org.soluvas.primefacesbootstrap;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
 import javax.ejb.Singleton;
 import javax.jcr.LoginException;
 import javax.jcr.Node;
@@ -13,6 +15,8 @@ import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
+import javax.jms.ConnectionFactory;
+import javax.naming.InitialContext;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -24,6 +28,12 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelExecutionException;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.component.jms.JmsComponent;
+import org.apache.camel.component.jms.JmsConfiguration;
+import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.jackrabbit.core.TransientRepository;
 import org.atmosphere.cpr.AtmosphereConfig;
 import org.atmosphere.cpr.Broadcaster;
@@ -34,7 +44,13 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.soluvas.json.JsonUtils;
+import org.soluvas.push.CollectionAdd;
+import org.soluvas.push.CollectionDelete;
+import org.soluvas.push.CollectionUpdate;
 
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -52,10 +68,13 @@ public class CommentResource {
 			.getLogger(CommentResource.class);
 	private Session session;
 	private Node commentRoot;
-	private TransientRepository repository; 
+	private TransientRepository repository;
+	CamelContext camel;
+	ProducerTemplate producer;
+	@Resource(mappedName="java:/ConnectionFactory") ConnectionFactory jmsFactory;
 
 	@PostConstruct
-	public void init() throws LoginException, RepositoryException {
+	public void init() throws Exception {
 		repository = new TransientRepository(new File("/home/ceefour/git/primefaces-bootstrap/jcr-data"));
 		session = repository.login(new SimpleCredentials("TestUser", "".toCharArray())); 
 		
@@ -72,10 +91,18 @@ public class CommentResource {
 		} else {
 			commentRoot = root.getNode("comment");
 		}
+		
+		camel = new DefaultCamelContext();
+		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(jmsFactory)));
+		camel.start();
+		producer = camel.createProducerTemplate();
+		producer.start();
 	}
 
 	@PreDestroy
-	public void destroy() {
+	public void destroy() throws Exception {
+		producer.stop();
+		camel.stop();
 		session.logout();
 		repository.shutdown();
 	}
@@ -98,7 +125,7 @@ public class CommentResource {
 	}
 
 	@POST
-	public Response create(Comment comment) throws RepositoryException {
+	public Response create(Comment comment) throws RepositoryException, CamelExecutionException, JsonGenerationException, JsonMappingException, IOException {
 		log.info("create comment {}", comment);
 		
 		Node commentNode = commentRoot.addNode(comment.getId());
@@ -108,8 +135,12 @@ public class CommentResource {
 		commentNode.setProperty("lastModified", comment.getLastModified().toGregorianCalendar());
 		session.save();
 		
-		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
-		getBroadcaster().broadcast(JsonUtils.asJson(push));
+//		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
+//		getBroadcaster().broadcast(JsonUtils.asJson(push));
+		CollectionAdd<Comment> push = new CollectionAdd<Comment>("comment", comment);
+		
+//		producer.sendBodyAndHeader("jms:topic:productTopic", push, "productId", "zibalabel_t01");
+		producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
 		
 		return Response.created(URI.create(comment.getId()))
 				.entity(comment).build();
@@ -136,8 +167,10 @@ public class CommentResource {
 			commentNode.remove();
 			session.save();
 			
-			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
-			getBroadcaster().broadcast(JsonUtils.asJson(push));
+//			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
+//			getBroadcaster().broadcast(JsonUtils.asJson(push));
+			CollectionDelete push = new CollectionDelete("comment", commentId);
+			producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
 			
 			return Response.noContent().build();
 		} catch (Exception e) {
@@ -156,8 +189,10 @@ public class CommentResource {
 			
 			Comment updatedComment = new Comment(commentNode);
 			
-			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
-			getBroadcaster().broadcast(JsonUtils.asJson(push));
+//			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
+//			getBroadcaster().broadcast(JsonUtils.asJson(push));
+			CollectionUpdate<Comment> push = new CollectionUpdate<Comment>("comment", commentId, updatedComment);
+			producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
 			
 			return comment;
 		} catch (Exception e) {

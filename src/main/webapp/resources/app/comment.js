@@ -1,46 +1,49 @@
 // jQuery Atmosphere - Setup push channel
 var socket = jQuery.atmosphere;
 var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be per topic, as in subscribe()
-        contentType : "application/json",
-        logLevel : 'debug',
-        transport : 'websocket',
+        contentType: "application/json",
+        logLevel: 'debug',
+        transport: 'websocket',
 //        url: 'ws://localhost:61614/stomp',
-        fallbackTransport : 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
+        fallbackTransport: 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
 };
 
 request.onOpen = function(response) {
     console.log('Atmosphere connected using ' + response.transport);
+    setTimeout(function() {
+    subSocket.push(JSON.stringify({'@class': 'org.soluvas.push.SubscribeTopic', topic: '/topic/product', filterName: 'productId', filterValue: 'zibalabel_t01'}));
+    }, 100);
 };
 request.onMessage = function (response) {
     var message = response.responseBody;
     try {
         var json = JSON.parse(message);
         console.log('push', json);
-        if (json.op == 'add' && json.collection == 'comment') {
+        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'comment') {
 //        	var existing = comments.find(function(e){ console.debug(e.id, json.data.id); });
 //        	if (existing != null) {
 //        		console.info('Skipping existing comment', json.data.id, existing);
 //        	} else {
-        		comments.push(json.data);
+    		comments.push(json.entry);
 //        	}
         }
-        if (json.op == 'delete' && json.collection == 'comment') {
-        	console.info('Deleting comment', json.data.id);
-        	var comment = comments.get(json.data.id);
+        if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
+        	console.info('Deleting comment', json.entryId);
+        	var comment = comments.get(json.entryId);
         	if (comment != null) {
         		// prevent sync
         		comment.id = null;
         		comment.destroy();
         	}
         }
-        if (json.op == 'update' && json.collection == 'comment') {
-        	console.info('Updating comment', json.data.id);
-        	var comment = comments.get(json.data.id);
+        if (json['@class'] == 'org.soluvas.push.CollectionUpdate' && json.collectionName == 'comment') {
+        	console.info('Updating comment', json.entryId);
+        	var comment = comments.get(json.entryId);
         	if (comment != null)
-        		comment.set({'body': json.data.body, 'lastModified': json.data.lastModified});
+        		comment.set({'body': json.entry.body, 'lastModified': json.entry.lastModified});
         }
     } catch (e) {
-        console.error('This doesn\'t look like a valid JSON: ', e, message.data);
+        console.error('This doesn\'t look like a valid JSON: ', e, message);
         return;
     }
 }
@@ -54,7 +57,7 @@ var commentTemplate = '<strong><%=authorName%></strong>\
     <div class="body"> \
         <%=body%> &#183; <span style="color: #888; font-size: 80%;"><%=lastModified%></span></div> \
     <div class="editor" style="display: none"> \
-	    <input name="editor" type="text"/> \
+	    <input type="text"/> \
 	    <button class="btn save"><i class="icon-ok"></i></button> \
 	</div> \
     <div class="controls" style="position: absolute; top: 0; right: 0; display: none;"> \
@@ -192,6 +195,9 @@ jQuery(document).ready(function() {
 			jQuery('#commentBtn').trigger('click');
 		}
 	});
+	jQuery('#test-push').bind('click', function() {
+		subSocket.push(JSON.stringify({'name': 'oalah'}));
+	})
 
 	// jQuery Atmosphere
     subSocket = jQuery.atmosphere.subscribe(request);

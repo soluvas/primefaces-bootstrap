@@ -4,6 +4,68 @@ h2. Curl Configuration
 
 bc. export BASE_URI='http://localhost:9080/primefaces-bootstrap'
 
+h2. Routing Plan
+
+Here's the object tree:
+
+* @person[personId]@. Subscribing to a person gets all public events about that person (which currently is none). Filter on @personId@ header.
+** @notification@ (public). Subscribing to a person's notification channel gets all public events for that person.
+** @notification_private@ (private). Subscribing to a person's notification channel gets all private events monitored by that person.
+   This is a privileged operation and requires proper access token/browser session.
+* @product[productId]@. Consume all @story@ collection, @comment@ collection, and @notification@ changes about a product(s). Subscribing to this topic is normally done when viewing a product page. Filter on @productId@ header. 
+** @story@. Subscribing to a product's story gets all story changes. However, JS push client should simply subscribe to the product itself.
+** @comment@. Subscribing to a product's comment gets all comment changes. However, JS push client should simply subscribe to the product itself.
+** @notification@. Gets all new notifications.
+
+Note that subscribing to a product channel is not the same as a Person liking a product. Subscribing is an infrastructural action done by the JS push client to the push message broker.
+Liking a product is a business domain action (which can be implemented using a messaging broker but not at all related to a push message broker broadcasting events to JS push clients).
+
+In standalone.xml or hornetq-jms.xml you need to declare x topics:
+
+1. @topic/person@
+2. @topic/person/notification@
+3. @topic/person/notification_private@
+4. @topic/product@
+5. @topic/product/story@
+6. @topic/product/comment@
+7. @topic/product/notification@
+
+e.g.
+
+bc.. 
+<jms-topic name="personTopic">
+    <entry name="topic/person"/>
+</jms-topic>
+<jms-topic name="personNotificationTopic">
+	<entry name="topic/person/notification"/>
+</jms-topic>
+<jms-topic name="personNotificationPrivateTopic">
+	<entry name="topic/person/notification_private"/>
+</jms-topic>
+<jms-topic name="productTopic">
+    <entry name="topic/product"/>
+</jms-topic>
+<jms-topic name="productStoryTopic">
+	<entry name="topic/product/story"/>
+</jms-topic>
+<jms-topic name="productCommentTopic">
+	<entry name="topic/product/comment"/>
+</jms-topic>
+<jms-topic name="productNotificationTopic">
+	<entry name="topic/product/notification"/>
+</jms-topic>
+
+
+h3. Atmosphere Broadcaster ID
+
+Every Atmosphere Broadcaster is assigned one-to-one with a browser page. Every Atmosphere broadcaster is also registered in the Camel context, in order to provide routing support
+for subscribed topics.
+
+When there is a change in product comment, a @CollectionAdd<Comment>@ message with @productId@ header is sent to the @jms:topic:product/comment@ and @jms:topic:product@ endpoint.
+
+There is also notification, a @CollectionAdd<Notification>@ message with @productId@ header is sent to @jms:topic:product/notification@ and @jms:topic:product@ endpoint.
+
+
 h2. JCR Resource
 
 TODO

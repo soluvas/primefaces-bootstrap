@@ -11,6 +11,7 @@
 		<primefaces.version>3.2</primefaces.version>
 		<infinispan.version>5.1.4.FINAL</infinispan.version>
 		<atmosphere.version>0.9.5</atmosphere.version>
+		<camel.version>2.9.2</camel.version>
 	</properties>
 	
 	<dependencyManagement>
@@ -82,7 +83,18 @@
 			<artifactId>atmosphere-runtime</artifactId>
 			<version>${atmosphere.version}</version>
 		</dependency>
-        
+		
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jms</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-core</artifactId>
+			<version>${camel.version}</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.primefaces</groupId>
 			<artifactId>primefaces</artifactId>
