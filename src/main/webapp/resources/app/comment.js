@@ -4,6 +4,7 @@ var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be pe
         contentType : "application/json",
         logLevel : 'debug',
         transport : 'websocket',
+//        url: 'ws://localhost:61614/stomp',
         fallbackTransport : 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
 };
 
