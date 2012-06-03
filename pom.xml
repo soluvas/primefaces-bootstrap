@@ -10,6 +10,7 @@
 	<properties>
 		<primefaces.version>3.2</primefaces.version>
 		<infinispan.version>5.1.4.FINAL</infinispan.version>
+		<atmosphere.version>0.9.5</atmosphere.version>
 	</properties>
 	
 	<dependencyManagement>
@@ -68,19 +69,19 @@
 		<dependency>
 			<groupId>org.atmosphere</groupId>
 			<artifactId>atmosphere-jquery</artifactId>
-			<version>0.9.5</version>
+			<version>${atmosphere.version}</version>
 			<type>war</type>
 		</dependency>
 		<dependency>
 			<groupId>org.atmosphere</groupId>
-			<artifactId>atmosphere-runtime</artifactId>
-			<version>0.9.5</version>
+			<artifactId>atmosphere-jms</artifactId>
+			<version>${atmosphere.version}</version>
 		</dependency>
-<!-- 		<dependency> -->
-<!-- 			<groupId>org.atmosphere</groupId> -->
-<!-- 			<artifactId>atmosphere-annotations</artifactId> -->
-<!-- 			<version>0.9.5</version> -->
-<!-- 		</dependency> -->
+		<dependency>
+			<groupId>org.atmosphere</groupId>
+			<artifactId>atmosphere-runtime</artifactId>
+			<version>${atmosphere.version}</version>
+		</dependency>
         
 		<dependency>
 			<groupId>org.primefaces</groupId>
