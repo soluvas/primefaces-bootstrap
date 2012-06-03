@@ -3,7 +3,9 @@ var socket = jQuery.atmosphere;
 var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be per topic, as in subscribe()
         contentType : "application/json",
         logLevel : 'debug',
-        transport : 'websocket'};
+        transport : 'websocket',
+        fallbackTransport : 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
+};
 
 request.onOpen = function(response) {
     console.log('Atmosphere connected using ' + response.transport);
@@ -47,17 +49,17 @@ request.onError = function(response) {
 };
 
 // Models
-var commentTemplate = ' \
-	<strong><%=authorName%></strong> <div class="body"><%=body%> &middot; <span style="color: #888; font-size: 80%;"><%=lastModified%></span></div> \
-	<div class="editor" style="display: none"> \
-		<input type="text"/> \
-		<button class="btn save"><i class="icon-ok"></i></button> \
+var commentTemplate = '<strong><%=authorName%></strong>\
+    <div class="body"> \
+        <%=body%> &#183; <span style="color: #888; font-size: 80%;"><%=lastModified%></span></div> \
+    <div class="editor" style="display: none"> \
+	    <input name="editor" type="text"/> \
+	    <button class="btn save"><i class="icon-ok"></i></button> \
 	</div> \
-	<div class="controls" style="position: absolute; top: 0; right: 0; display: none;"> \
-		<button class="btn edit" title="Edit"><i class="icon-edit"></i></button> \
-		<button class="btn delete" title="Delete"><i class="icon-remove"></i></button> \
-	</div> \
-';
+    <div class="controls" style="position: absolute; top: 0; right: 0; display: none;"> \
+        <button class="btn edit" title="Edit"><i class="icon-edit"></i></button> \
+        <button class="btn delete" title="Delete"><i class="icon-remove"></i></button> \
+    </div>';
 var Comment = Backbone.Model.extend({
 	defaults: {
 		authorName: 'Hendy Irawan',
@@ -88,32 +90,21 @@ var CommentList = Backbone.Collection.extend({
 	},
 	onReset: function(comments) {
 		console.log('comment list reset', this.length);
+		jQuery('#commentStream').html('<p>Eh lucu</p>');
 		this.each(function(comment) {
 			console.log("Process comment", comment);
 			var view = new CommentView({model: comment}).render();
-			jQuery('#comment-stream').append(view.el);
-//			comment.on('destroy', function(){ view.$el.fadeOut('slow', function(){ view.remove(); }); });
+			jQuery('#comment-stream').append(view.$el);
 		});
 	}
 });
-
-var freshComment = new Comment;
-
-var comments = new CommentList;
-
-function stripCdata(str) {
-	return (str+'').replace(/\<\!\[CDATA\[|\]\]\>/g, '');
-}
-function convertTemplate(str) {
-	return str.replace(/\{\{/g, '<%=').replace(/\}\}/g, '%>');
-}
-
 
 var CommentView = Backbone.View.extend({
 	tagName: 'li',
 	className: 'comment',
 	initialize: function(args) {
-		this.model.on('change', this.replace, this);
+		_.bindAll(this, 'render');
+		this.model.on('change', this.replaceEntry, this);
 		this.model.on('destroy', this.fadeAndRemove, this);
 	},
 	events: {
@@ -126,7 +117,6 @@ var CommentView = Backbone.View.extend({
 			'keypress .editor': 'editorKeypress'
 	},
 	render: function() {
-		console.log("Rendering", this.model.get('body'), this.el);
 		var template = _.template(commentTemplate,
 				{authorName: this.model.get('authorName'), body: this.model.get('body'), lastModified: this.model.get('lastModified')});
 		this.$el.html(template);
@@ -168,11 +158,22 @@ var CommentView = Backbone.View.extend({
 		var view = this;
 		this.$el.fadeOut('slow', function(){ view.remove(); });
 	},
-	replace: function() {
+	replaceEntry: function() {
 		var view = this;
 		this.$el.slideUp('fast', function(){ view.render(); view.$el.slideDown('slow'); });
 	}
 });
+
+var freshComment = new Comment;
+
+var comments = new CommentList;
+
+function stripCdata(str) {
+	return (str+'').replace(/\<\!\[CDATA\[|\]\]\>/g, '');
+}
+function convertTemplate(str) {
+	return str.replace(/\{\{/g, '<%=').replace(/\}\}/g, '%>');
+}
 
 jQuery(document).ready(function() {
 
