@@ -166,7 +166,7 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
 			
 			String selector = String.format("%s = '%s'", filterName, filterValue);
 			logger.info("{} Subscribing to {} with selector: {}", new Object[] { getID(), topicName, selector });
-			MessageConsumer consumer = consumerSession.createConsumer(topic);//, selector);
+			MessageConsumer consumer = consumerSession.createConsumer(topic, selector);
             consumer.setMessageListener(new MessageListener() {
                 @Override
                 public void onMessage(Message msg) {
