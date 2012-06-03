@@ -45,6 +45,26 @@
             <param-name>org.atmosphere.servlet</param-name>
             <param-value>org.soluvas.primefacesbootstrap.MeteorChat</param-value>
         </init-param>
+        <init-param>
+            <param-name>org.atmosphere.useWebSocket</param-name>
+            <param-value>true</param-value>
+        </init-param>
+        <init-param>
+            <param-name>org.atmosphere.useNative</param-name>
+            <param-value>true</param-value>
+        </init-param>
+    	<init-param>
+        	<param-name>org.atmosphere.plugin.jms.JMSBroadcaster.JNDINamespace</param-name>
+        	<param-value></param-value>
+        </init-param>
+        <init-param>
+        	<param-name>org.atmosphere.plugin.jms.JMSBroadcaster.JNDIConnectionFactoryName</param-name>
+        	<param-value>/ConnectionFactory</param-value>
+        </init-param>
+        <init-param>
+        	<param-name>org.atmosphere.plugin.jms.JMSBroadcaster.JNDITopic</param-name>
+        	<param-value>/topic/test</param-value>
+        </init-param>
         <load-on-startup>0</load-on-startup>
     </servlet>
     <servlet-mapping>

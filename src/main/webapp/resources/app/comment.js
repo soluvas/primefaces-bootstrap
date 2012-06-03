@@ -46,6 +46,18 @@ request.onError = function(response) {
         + 'socket or the server is down');
 };
 
+// Models
+var commentTemplate = ' \
+	<strong><%=authorName%></strong> <div class="body"><%=body%> &middot; <span style="color: #888; font-size: 80%;"><%=lastModified%></span></div> \
+	<div class="editor" style="display: none"> \
+		<input type="text"/> \
+		<button class="btn save"><i class="icon-ok"></i></button> \
+	</div> \
+	<div class="controls" style="position: absolute; top: 0; right: 0; display: none;"> \
+		<button class="btn edit" title="Edit"><i class="icon-edit"></i></button> \
+		<button class="btn delete" title="Delete"><i class="icon-remove"></i></button> \
+	</div> \
+';
 var Comment = Backbone.Model.extend({
 	defaults: {
 		authorName: 'Hendy Irawan',
@@ -115,7 +127,7 @@ var CommentView = Backbone.View.extend({
 	},
 	render: function() {
 		console.log("Rendering", this.model.get('body'), this.el);
-		var template = _.template(stripCdata(jQuery('#comment-template').html()),
+		var template = _.template(commentTemplate,
 				{authorName: this.model.get('authorName'), body: this.model.get('body'), lastModified: this.model.get('lastModified')});
 		this.$el.html(template);
 		return this;

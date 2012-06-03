@@ -2,7 +2,6 @@ package org.soluvas.primefacesbootstrap;
 
 import java.io.File;
 import java.net.URI;
-import java.util.Date;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -24,11 +23,12 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 import org.apache.jackrabbit.core.TransientRepository;
+import org.atmosphere.cpr.AtmosphereConfig;
 import org.atmosphere.cpr.BroadcasterFactory;
 import org.atmosphere.cpr.DefaultBroadcaster;
+import org.atmosphere.plugin.jms.JMSBroadcaster;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,7 +104,7 @@ public class CommentResource {
 		session.save();
 		
 		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
-		BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
+		BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true)
 			.broadcast(JsonUtils.asJson(push));
 		
 		return Response.created(URI.create(comment.getId()))

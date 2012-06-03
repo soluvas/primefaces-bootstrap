@@ -12,8 +12,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.IOUtils;
 import org.atmosphere.cpr.AtmosphereResourceEventListenerAdapter;
 import org.atmosphere.cpr.BroadcasterFactory;
-import org.atmosphere.cpr.DefaultBroadcaster;
 import org.atmosphere.cpr.Meteor;
+import org.atmosphere.plugin.jms.JMSBroadcaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.soluvas.json.JsonUtils;
@@ -39,6 +39,7 @@ public class MeteorChat extends HttpServlet {
 		Meteor m = Meteor.build(req).addListener(
 				new AtmosphereResourceEventListenerAdapter());
 
+		m.setBroadcaster(BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true));
 		m.resumeOnBroadcast(m.transport() == LONG_POLLING ? true : false)
 				.suspend(-1);
 	}
@@ -63,7 +64,7 @@ public class MeteorChat extends HttpServlet {
 		else
 			data = new ObjectMapper().readValue(body, Data.class);
 		log.info("Broadcasting {}", data);
-		BroadcasterFactory.getDefault().lookup(DefaultBroadcaster.class, "/*")
+		BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true)
 				.broadcast(data.toString());
 	}
 
