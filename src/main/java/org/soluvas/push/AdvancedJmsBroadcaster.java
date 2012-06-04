@@ -37,32 +37,33 @@
  */
 package org.soluvas.push;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
-import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageListener;
-import javax.jms.ObjectMessage;
-import javax.jms.Session;
-import javax.jms.TextMessage;
 import javax.jms.Topic;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 
+import org.apache.camel.Body;
+import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.jms.JmsComponent;
+import org.apache.camel.component.jms.JmsConfiguration;
+import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.commons.lang3.StringUtils;
 import org.atmosphere.cpr.AtmosphereConfig;
+import org.atmosphere.cpr.BroadcasterFuture;
+import org.atmosphere.cpr.DefaultBroadcaster.Entry;
 import org.atmosphere.plugin.jms.JMSBroadcaster;
 import org.atmosphere.util.AbstractBroadcasterProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicate;
-import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Simple {@link org.atmosphere.cpr.Broadcaster} implementation based on JMS
@@ -78,16 +79,14 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
     private static final String JNDI_NAMESPACE = JMSBroadcaster.class.getName() + ".JNDINamespace";
     private static final String JNDI_FACTORY_NAME = JMSBroadcaster.class.getName() + ".JNDIConnectionFactoryName";
     private static final String JNDI_TOPIC = JMSBroadcaster.class.getName() + ".JNDITopic";
-    private static final Logger logger = LoggerFactory.getLogger(JMSBroadcaster.class);
-
-    private Connection connection;
-    private Session consumerSession;
-    private Topic topic;
+    private static final Logger logger = LoggerFactory.getLogger(AdvancedJmsBroadcaster.class);
 
     private String topicId = "atmosphere";
     private String factoryName = "atmosphereFactory";
     private String namespace = "jms/";
-    private Map<String, MessageConsumer> consumers = new HashMap<String, MessageConsumer>();
+    private Set<String> subscribedEndpoints = new HashSet<String>();
+    private DefaultCamelContext camel;
+    private ProducerTemplate producer;
 
     public AdvancedJmsBroadcaster(String id, AtmosphereConfig config) {
         super(id, null, config);
@@ -113,30 +112,44 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
                 topicId = config.getInitParameter(JNDI_TOPIC);
             }
 
-            logger.info("Looking up Connection Factory {}", namespace + factoryName);
+    		logger.info("Looking up Connection Factory {}", namespace + factoryName);
             Context ctx = new InitialContext();
             ConnectionFactory connectionFactory = (ConnectionFactory) ctx.lookup(namespace + factoryName);
 
-            logger.info("Looking up topic: {}", topicId);
-            topic = (Topic) ctx.lookup(namespace + topicId);
-
-            connection = connectionFactory.createConnection();
-            consumerSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-
-            connection.start();
-            logger.info("JMS created for topic {}", topicId);
-            // Unfortunately we need the getID() to complete the configuration
-            // But setID() is called after configure(), therefore we do the
-            // rest of the configuration in incomingBroadcast() (which is called
-            // once during configuration). We cannot do all the configuration in
-            // incomingBroadcast() though, as using bc.getAtmosphereConfig() would
-            // introduce a race condition (the configuration is loaded in a different
-            // thread).
+    		camel = new DefaultCamelContext();
+    		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(connectionFactory)));
+    		camel.start();
+    		producer = camel.createProducerTemplate();
+    		producer.start();
         } catch (Exception e) {
             String msg = "Unable to configure JMSBroadcaster";
             logger.error(msg, e);
             throw new RuntimeException(msg, e);
         }
+    }
+    
+    public void reloadRoutes() {
+    	try {
+    		logger.info("Reloading routes for {}", getID());
+			camel.removeRouteDefinitions(camel.getRouteDefinitions());
+			camel.addRoutes(new RouteBuilder() {
+				@Override
+				public void configure() throws Exception {
+					for (String endpoint : subscribedEndpoints) {
+						logger.info("Subscribing to {}", endpoint);
+						from(endpoint).process(new Processor() {
+							@Override
+							public void process(Exchange exchange) throws Exception {
+								onMessage((String)exchange.getIn().getBody());
+							}
+						});
+//						from(endpoint).to("log:" + getID());
+					}
+				}
+			});
+		} catch (Exception e) {
+			throw new RuntimeException("reloadRoutes", e);
+		}
     }
 
     /**
@@ -152,39 +165,59 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
         super.setID(id);
     }
     
+	public void onMessage(String jsonBody) {
+		synchronized(this) {
+			try {
+				logger.info(
+						"{} consumes {}",
+						getID(),
+						StringUtils.abbreviate(
+								StringUtils.replace(jsonBody, "\n", " "), 140));
+				BroadcasterFuture<Object> f = new BroadcasterFuture<Object>(
+						jsonBody);
+				try {
+					Object newMsg = filter(jsonBody);
+					push(new Entry(newMsg, null, f, jsonBody));
+				} finally {
+					f.done();
+				}
+	
+				// broadcastReceivedMessage(jsonBody); // this doesn't work. two consecutive broadcasts are broadcasted as one concatenated string
+				Thread.sleep(100); // FIXME: How do I avoid this? Even with this, two immediately consecutive broadcasts are not always broadcasted properly
+			} catch (Exception ex) {
+				logger.warn("Failed to broadcast message " + jsonBody, ex);
+			}
+		}
+	}
+    
     public void subscribeTopic(String topicName, String filterName, String filterValue) {
-    	String consumerName = topicName + "." + filterName + "." + filterValue;
-    	if (consumers.containsKey(consumerName)) {
+    	String consumerName = "jms:topic:" + topicName;// + "?selector=" + filterName + "%3D" + filterValue;
+    	if (subscribedEndpoints.contains(consumerName)) {
     		logger.warn("{} Ignoring subscribing using existing consumer {}", getID(), consumerName);
     		return;
     	}
         try {
-			Context ctx = new InitialContext();
-
-			logger.info("{} Looking up topic: {}", getID(), topicName);
-			topic = (Topic) ctx.lookup(topicName);
-			
-			String selector = String.format("%s = '%s'", filterName, filterValue);
-			logger.info("{} Subscribing to {} with selector: {}", new Object[] { getID(), topicName, selector });
-			MessageConsumer consumer = consumerSession.createConsumer(topic, selector);
-            consumer.setMessageListener(new MessageListener() {
-                @Override
-                public void onMessage(Message msg) {
-                    try {
-                    	logger.info("{} consumes {}", getID(), msg);
-                    	msg.acknowledge();
-                    	TextMessage textMessage = (TextMessage) msg;
-                    	broadcastReceivedMessage(textMessage.getText());
-//                        ObjectMessage objMessage = (ObjectMessage) msg;
-//                        ObjectMapper mapper = new ObjectMapper();
-//                        String objStr = mapper.writeValueAsString(objMessage.getObject());
-//                        broadcastReceivedMessage(objStr);
-                    } catch (Exception ex) {
-                        logger.warn("Failed to broadcast message "+ msg, ex);
-                    }
-                }
-            });
-			consumers.put(consumerName, consumer);
+			logger.info("{} Subscribing to {}", new Object[] { getID(), consumerName });
+			subscribedEndpoints.add(consumerName);
+			reloadRoutes();
+//			MessageConsumer consumer = consumerSession.createConsumer(topic, selector);
+//            consumer.setMessageListener(new MessageListener() {
+//                @Override
+//                public void onMessage(Message msg) {
+//                    try {
+//                    	logger.info("{} consumes {}", getID(), msg);
+//                    	msg.acknowledge();
+//                    	TextMessage textMessage = (TextMessage) msg;
+//                    	broadcastReceivedMessage(textMessage.getText());
+////                        ObjectMessage objMessage = (ObjectMessage) msg;
+////                        ObjectMapper mapper = new ObjectMapper();
+////                        String objStr = mapper.writeValueAsString(objMessage.getObject());
+////                        broadcastReceivedMessage(objStr);
+//                    } catch (Exception ex) {
+//                        logger.warn("Failed to broadcast message "+ msg, ex);
+//                    }
+//                }
+//            });
 		} catch (Exception e) {
 			throw new RuntimeException("Cannot subscribe to +"+ topicName + " with "+ filterName +"="+ filterValue, e);
 		}
@@ -192,22 +225,18 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
     
     public void unsubscribeTopic(final String topicName) {
     	logger.info("{} Unsubscribing topic {}", getID(), topicName);
-    	consumers = Maps.filterEntries(consumers, new Predicate<Map.Entry<String, MessageConsumer>>() {
+    	final String consumerName = "jms:" + topicName;
+    	subscribedEndpoints = Sets.filter(subscribedEndpoints, new Predicate<String>() {
     		@Override
-    		public boolean apply(
-    				java.util.Map.Entry<String, MessageConsumer> input) {
-    			if (input.getKey().startsWith(topicName)) {
-    				logger.info("Closing consumer {}", input.getKey());
-    				try {
-						input.getValue().close();
-					} catch (JMSException e) {
-						logger.error("Cannot close consumer " + input.getKey(), e);
-					}
+    		public boolean apply(String input) {
+    			if (input.startsWith(consumerName)) {
+    				logger.info("Unsubscribing from endpoint {}", input);
     				return false;
     			}
     			return true;
     		}
 		});
+    	reloadRoutes();
     }
 
     /**
@@ -239,21 +268,13 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
      */
     @Override
     public synchronized void releaseExternalResources() {
-    	for (Map.Entry<String, MessageConsumer> entry : consumers.entrySet()) {
-    		try {
-    			logger.debug("Closing consumer {}", entry.getKey());
-				entry.getValue().close();
-			} catch (Exception e) {
-	            logger.warn("releaseExternalResources: close consumer " + entry.getKey(), e);
-			}
-    	}
         try {
-            consumerSession.close();
+            producer.stop();
         } catch (Throwable ex) {
             logger.warn("releaseExternalResources: close consumerSession", ex);
         }
         try {
-            connection.close();
+        	camel.stop();
         } catch (Throwable ex) {
             logger.warn("releaseExternalResources: close connection", ex);
         }

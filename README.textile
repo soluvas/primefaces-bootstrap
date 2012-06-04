@@ -33,26 +33,26 @@ In standalone.xml or hornetq-jms.xml you need to declare x topics:
 e.g.
 
 bc.. 
-<jms-topic name="personTopic">
+<jms-topic name="person">
     <entry name="topic/person"/>
 </jms-topic>
-<jms-topic name="personNotificationTopic">
-	<entry name="topic/person/notification"/>
+<jms-topic name="person.notification">
+    <entry name="topic/person/notification"/>
 </jms-topic>
-<jms-topic name="personNotificationPrivateTopic">
-	<entry name="topic/person/notification_private"/>
+<jms-topic name="person.notification.private">
+    <entry name="topic/person/notification_private"/>
 </jms-topic>
-<jms-topic name="productTopic">
+<jms-topic name="product">
     <entry name="topic/product"/>
 </jms-topic>
-<jms-topic name="productStoryTopic">
-	<entry name="topic/product/story"/>
+<jms-topic name="product.story">
+    <entry name="topic/product/story"/>
 </jms-topic>
-<jms-topic name="productCommentTopic">
-	<entry name="topic/product/comment"/>
+<jms-topic name="product.comment">
+    <entry name="topic/product/comment"/>
 </jms-topic>
-<jms-topic name="productNotificationTopic">
-	<entry name="topic/product/notification"/>
+<jms-topic name="product.notification">
+    <entry name="topic/product/notification"/>
 </jms-topic>
 
 

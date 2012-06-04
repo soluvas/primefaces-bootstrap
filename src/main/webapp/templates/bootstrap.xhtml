@@ -27,8 +27,15 @@
 		href="#{request.contextPath}/resources/images/ico/apple-touch-icon-72-precomposed.png" />
 	<link rel="apple-touch-icon-precomposed" href="#{request.contextPath}/resources/images/ico/apple-touch-icon-57-precomposed.png" />
 	
+	<h:outputStylesheet library="jquery-ui" name="css/ui-lightness/jquery-ui-1.8.20.custom.css"/>
+	<h:outputStylesheet library="jquery-notify" name="ui.notify.css"/>
+	
+	<h:outputScript library="primefaces" name="jquery/jquery.js"/>
 	<h:outputScript library="js" name="underscore-min.js"/>
 	<h:outputScript library="js" name="backbone-min.js"/>
+	<h:outputScript library="jquery-ui" name="js/jquery-ui-1.8.20.custom.min.js"/>
+	<h:outputScript library="jquery-notify" name="jquery.notify.js"/>
+		
 	<script type="text/javascript" src="#{request.contextPath}/jquery/jquery.atmosphere.js"></script>
 	<script type="text/javascript">
 	var baseUri = '#{request.contextPath}/';
@@ -96,6 +103,23 @@
 
 	<!--/.fluid-container-->
 
+	<!-- set the container hidden to avoid a flash of unstyled content
+	when the page first loads -->
+	<div id="growl-container" style="display:none; margin-top: 60px">
+	 
+	    <!-- 
+	    Later on, you can choose which template to use by referring to the 
+	    ID assigned to each template.  Alternatively, you could refer
+	    to each template by index, so in this example, "basic-tempate" is
+	    index 0 and "advanced-template" is index 1.
+	    -->
+	    <div id="basic-template">
+	        <a class="ui-notify-cross ui-notify-close" href="#">x</a>
+	        <p><h:outputText value="#"/>{text}</p>
+	    </div>
+	 
+	</div>
+
 	<!-- Le javascript
     ================================================== -->
 
@@ -112,6 +136,9 @@
 	<h:outputScript library="bootstrap" name="js/bootstrap-collapse.js"/>
 	<h:outputScript library="bootstrap" name="js/bootstrap-carousel.js"/>
 	<h:outputScript library="bootstrap" name="js/bootstrap-typeahead.js"/>
-	
+
+<script type="text/javascript">
+jQuery('#growl-container').notify();
+</script>	
 </h:body>
 </html>

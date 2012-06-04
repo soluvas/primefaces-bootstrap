@@ -9,6 +9,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.Singleton;
+import javax.ejb.Startup;
 import javax.jcr.LoginException;
 import javax.jcr.Node;
 import javax.jcr.Repository;
@@ -30,6 +31,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelExecutionException;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.jms.JmsConfiguration;
@@ -47,6 +49,7 @@ import org.soluvas.json.JsonUtils;
 import org.soluvas.push.CollectionAdd;
 import org.soluvas.push.CollectionDelete;
 import org.soluvas.push.CollectionUpdate;
+import org.soluvas.push.Notification;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -58,7 +61,7 @@ import com.google.common.collect.Lists;
 /**
  * @author ceefour
  */
-@Singleton
+@Singleton @Startup
 @Path("/comment")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -69,12 +72,13 @@ public class CommentResource {
 	private Session session;
 	private Node commentRoot;
 	private TransientRepository repository;
-	CamelContext camel;
+	public static CamelContext camel;
 	ProducerTemplate producer;
 	@Resource(mappedName="java:/ConnectionFactory") ConnectionFactory jmsFactory;
-
+	
 	@PostConstruct
 	public void init() throws Exception {
+		log.info("Starting CommentResource");
 		repository = new TransientRepository(new File("/home/ceefour/git/primefaces-bootstrap/jcr-data"));
 		session = repository.login(new SimpleCredentials("TestUser", "".toCharArray())); 
 		
@@ -138,9 +142,11 @@ public class CommentResource {
 //		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
 //		getBroadcaster().broadcast(JsonUtils.asJson(push));
 		CollectionAdd<Comment> push = new CollectionAdd<Comment>("comment", comment);
+//		producer.sendBodyAndHeader("jms:topic:product", push, "productId", "zibalabel_t01");
+		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
 		
-//		producer.sendBodyAndHeader("jms:topic:productTopic", push, "productId", "zibalabel_t01");
-		producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
+		Notification notification = new Notification(comment.getAuthorName() +" berkomentar: "+ comment.getBody());
+		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
 		
 		return Response.created(URI.create(comment.getId()))
 				.entity(comment).build();
@@ -170,7 +176,10 @@ public class CommentResource {
 //			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
 //			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			CollectionDelete push = new CollectionDelete("comment", commentId);
-			producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			
+			Notification notification = new Notification("Komentar dari "+ comment.getAuthorName() +" dihapus.");
+			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
 			
 			return Response.noContent().build();
 		} catch (Exception e) {
@@ -192,7 +201,10 @@ public class CommentResource {
 //			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
 //			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			CollectionUpdate<Comment> push = new CollectionUpdate<Comment>("comment", commentId, updatedComment);
-			producer.sendBodyAndHeader("jms:topic:productTopic?disableReplyTo=true", JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			
+			Notification notification = new Notification(comment.getAuthorName() +" menyunting komentarnya.");
+			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
 			
 			return comment;
 		} catch (Exception e) {

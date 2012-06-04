@@ -14,7 +14,7 @@ public class CollectionDelete extends PushMessage {
 	}
 
 	public CollectionDelete(String collectionName, String entryId) {
-		super("collection_delete");
+		super();
 		this.collectionName = collectionName;
 		this.entryId = entryId;
 	}

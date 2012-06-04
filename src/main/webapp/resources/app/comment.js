@@ -11,7 +11,7 @@ var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be pe
 request.onOpen = function(response) {
     console.log('Atmosphere connected using ' + response.transport);
     setTimeout(function() {
-    subSocket.push(JSON.stringify({'@class': 'org.soluvas.push.SubscribeTopic', topic: '/topic/product', filterName: 'productId', filterValue: 'zibalabel_t01'}));
+    subSocket.push(JSON.stringify({'@class': 'org.soluvas.push.SubscribeTopic', topic: 'product', filterName: 'productId', filterValue: 'zibalabel_t01'}));
     }, 100);
 };
 request.onMessage = function (response) {
@@ -26,6 +26,9 @@ request.onMessage = function (response) {
 //        	} else {
     		comments.push(json.entry);
 //        	}
+        }
+        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
+    		jQuery('#growl-container').notify('create', {text: json.entry.message});
         }
         if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
         	console.info('Deleting comment', json.entryId);
@@ -196,8 +199,8 @@ jQuery(document).ready(function() {
 		}
 	});
 	jQuery('#test-push').bind('click', function() {
-		subSocket.push(JSON.stringify({'name': 'oalah'}));
-	})
+		jQuery('#growl-container').notify('create', {title: 'Wah keren', text: 'Maknyus gan'});
+	});
 
 	// jQuery Atmosphere
     subSocket = jQuery.atmosphere.subscribe(request);

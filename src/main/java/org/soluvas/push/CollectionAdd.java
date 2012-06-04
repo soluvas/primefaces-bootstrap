@@ -14,7 +14,7 @@ public class CollectionAdd<T> extends PushMessage {
 	}
 
 	public CollectionAdd(String collectionName, T entry) {
-		super("collection_add");
+		super();
 		this.collectionName = collectionName;
 		this.entry = entry;
 	}
