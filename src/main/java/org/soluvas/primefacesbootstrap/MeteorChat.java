@@ -4,22 +4,18 @@ import static org.atmosphere.cpr.AtmosphereResource.TRANSPORT.LONG_POLLING;
 
 import java.io.IOException;
 
-import javax.inject.Inject;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.camel.CamelContext;
-import org.apache.camel.RoutesBuilder;
-import org.apache.camel.builder.RouteBuilder;
 import org.atmosphere.cpr.AtmosphereResourceEventListenerAdapter;
-import org.atmosphere.cpr.Broadcaster;
 import org.atmosphere.cpr.BroadcasterFactory;
 import org.atmosphere.cpr.Meteor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.soluvas.push.AdvancedJmsBroadcaster;
 import org.soluvas.push.PushMessage;
+import org.soluvas.push.StompBroadcaster;
 import org.soluvas.push.SubscribeTopic;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,7 +45,8 @@ public class MeteorChat extends HttpServlet {
 		String trackingId = req.getHeader("X-Atmosphere-tracking-id");
 
 //		m.setBroadcaster(BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true));
-		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
+//		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
+		StompBroadcaster broadcaster = getBroadcaster(trackingId);
 		m.setBroadcaster(broadcaster);
 		m.resumeOnBroadcast(m.transport() == LONG_POLLING ? true : false)
 				.suspend(-1);
@@ -69,15 +66,21 @@ public class MeteorChat extends HttpServlet {
 	public void doPost(HttpServletRequest req, HttpServletResponse res)
 			throws IOException {
 		String trackingId = req.getHeader("X-Atmosphere-tracking-id");
-		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
+//		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
+		StompBroadcaster broadcaster = getBroadcaster(trackingId);
 		
 		ObjectMapper mapper = new ObjectMapper();
 		PushMessage message = mapper.readValue(req.getReader(), PushMessage.class);
-		log.info("Got message: {}", message);
+		log.info("Atmosphere Client pushes: {}", message);
 		if (message instanceof SubscribeTopic) {
 			SubscribeTopic subscribeTopic = (SubscribeTopic)message;
 			broadcaster.subscribeTopic(subscribeTopic.getTopic(), subscribeTopic.getFilterName(), subscribeTopic.getFilterValue());
 		}
+	}
+	
+	protected StompBroadcaster getBroadcaster(String trackingId) {
+		StompBroadcaster broadcaster = (StompBroadcaster)BroadcasterFactory.getDefault().lookup(StompBroadcaster.class, trackingId, true);
+		return broadcaster;
 	}
 
 }

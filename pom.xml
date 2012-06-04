@@ -101,6 +101,12 @@
 		</dependency>
 		
 		<dependency>
+			<groupId>com.google.code.stompj</groupId>
+			<artifactId>stompj</artifactId>
+			<version>0.5</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.primefaces</groupId>
 			<artifactId>primefaces</artifactId>
 			<version>${primefaces.version}</version>

@@ -250,7 +250,7 @@ public class CommentResource {
 	}
 	
 	static long notificationNumber = 1L;
-	@Schedule(hour="*", minute="*", second="*/1", persistent=false)
+//	@Schedule(hour="*", minute="*", second="*/1", persistent=false)
 	public void giveNotification() {
 		if (!started)
 			return;
