@@ -1,60 +1,114 @@
-// jQuery Atmosphere - Setup push channel
-var socket = jQuery.atmosphere;
-var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be per topic, as in subscribe()
-        contentType: "application/json",
-        logLevel: 'debug',
-        transport: 'websocket',
-//        url: 'ws://localhost:61614/stomp',
-        fallbackTransport: 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
-};
+var client = Stomp.client('http://' + window.location.hostname + ':55674/stomp');
+client.debug = function(x) { console.log(x); };
+//client.debug = pipe('#second');
 
-request.onOpen = function(response) {
-    console.log('Atmosphere connected using ' + response.transport);
-    setTimeout(function() {
-    subSocket.push(JSON.stringify({'@class': 'org.soluvas.push.SubscribeTopic', topic: 'product', filterName: 'productId', filterValue: 'zibalabel_t01'}));
-    }, 100);
-};
-request.onMessage = function (response) {
-    var message = response.responseBody;
-    try {
-        var json = JSON.parse(message);
-        console.log('push', json);
-        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'comment') {
-//        	var existing = comments.find(function(e){ console.debug(e.id, json.data.id); });
-//        	if (existing != null) {
-//        		console.info('Skipping existing comment', json.data.id, existing);
-//        	} else {
-    		comments.push(json.entry);
+//var print_first = pipe('#first', function(data) {
+//  client.send('/topic/test', {}, data);
+//});
+client.connect('guest', 'guest', function(x) {
+	id = client.subscribe("/exchange/product", function(d) {
+	    var message = d.body;
+	    try {
+	        var json = JSON.parse(message);
+	        console.log('push', json);
+	        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'comment') {
+//	        	var existing = comments.find(function(e){ console.debug(e.id, json.data.id); });
+//	        	if (existing != null) {
+//	        		console.info('Skipping existing comment', json.data.id, existing);
+//	        	} else {
+	    		comments.push(json.entry);
+//	        	}
+	        }
+	        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
+	        	notificationCount.set('count', notificationCount.get('count') + 1);
+	    		jQuery('#growl-container').notify('create', {text: json.entry.message});
+	        }
+	        if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
+	        	console.info('Deleting comment', json.entryId);
+	        	var comment = comments.get(json.entryId);
+	        	if (comment != null) {
+	        		// prevent sync
+	        		comment.id = null;
+	        		comment.destroy();
+	        	}
+	        }
+	        if (json['@class'] == 'org.soluvas.push.CollectionUpdate' && json.collectionName == 'comment') {
+	        	console.info('Updating comment', json.entryId);
+	        	var comment = comments.get(json.entryId);
+	        	if (comment != null)
+	        		comment.set({'body': json.entry.body, 'lastModified': json.entry.lastModified});
+	        }
+	    } catch (e) {
+	        console.error('This doesn\'t look like a valid JSON: ', e, message);
+	    }
+	});
+});
+
+//  $('#first input').focus(function() {
+//  if (!has_had_focus) {
+//      has_had_focus = true;
+//      $(this).val("");
+//      }
+//  });
+
+
+//// jQuery Atmosphere - Setup push channel
+//var socket = jQuery.atmosphere;
+//var request = {url: baseUri + 'meteor', // TODO: add sessionId?? it should be per topic, as in subscribe()
+//        contentType: "application/json",
+//        logLevel: 'debug',
+//        transport: 'websocket',
+////        url: 'ws://localhost:61614/stomp',
+//        fallbackTransport: 'long-polling' // Comet streaming doesn't work on Android 2.3 browser, so just use long-polling for now
+//};
+//
+//request.onOpen = function(response) {
+//    console.log('Atmosphere connected using ' + response.transport);
+//    setTimeout(function() {
+//    subSocket.push(JSON.stringify({'@class': 'org.soluvas.push.SubscribeTopic', topic: 'product', filterName: 'productId', filterValue: 'zibalabel_t01'}));
+//    }, 100);
+//};
+//request.onMessage = function (response) {
+//    var message = response.responseBody;
+//    try {
+//        var json = JSON.parse(message);
+//        console.log('push', json);
+//        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'comment') {
+////        	var existing = comments.find(function(e){ console.debug(e.id, json.data.id); });
+////        	if (existing != null) {
+////        		console.info('Skipping existing comment', json.data.id, existing);
+////        	} else {
+//    		comments.push(json.entry);
+////        	}
+//        }
+//        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
+//        	notificationCount.set('count', notificationCount.get('count') + 1);
+//    		jQuery('#growl-container').notify('create', {text: json.entry.message});
+//        }
+//        if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
+//        	console.info('Deleting comment', json.entryId);
+//        	var comment = comments.get(json.entryId);
+//        	if (comment != null) {
+//        		// prevent sync
+//        		comment.id = null;
+//        		comment.destroy();
 //        	}
-        }
-        if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
-        	notificationCount.set('count', notificationCount.get('count') + 1);
-    		jQuery('#growl-container').notify('create', {text: json.entry.message});
-        }
-        if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
-        	console.info('Deleting comment', json.entryId);
-        	var comment = comments.get(json.entryId);
-        	if (comment != null) {
-        		// prevent sync
-        		comment.id = null;
-        		comment.destroy();
-        	}
-        }
-        if (json['@class'] == 'org.soluvas.push.CollectionUpdate' && json.collectionName == 'comment') {
-        	console.info('Updating comment', json.entryId);
-        	var comment = comments.get(json.entryId);
-        	if (comment != null)
-        		comment.set({'body': json.entry.body, 'lastModified': json.entry.lastModified});
-        }
-    } catch (e) {
-        console.error('This doesn\'t look like a valid JSON: ', e, message);
-        return;
-    }
-}
-request.onError = function(response) {
-    console.error('Sorry, but there\'s some problem with your '
-        + 'socket or the server is down');
-};
+//        }
+//        if (json['@class'] == 'org.soluvas.push.CollectionUpdate' && json.collectionName == 'comment') {
+//        	console.info('Updating comment', json.entryId);
+//        	var comment = comments.get(json.entryId);
+//        	if (comment != null)
+//        		comment.set({'body': json.entry.body, 'lastModified': json.entry.lastModified});
+//        }
+//    } catch (e) {
+//        console.error('This doesn\'t look like a valid JSON: ', e, message);
+//        return;
+//    }
+//}
+//request.onError = function(response) {
+//    console.error('Sorry, but there\'s some problem with your '
+//        + 'socket or the server is down');
+//};
 
 // Models
 var commentTemplate = '<strong><%=authorName%></strong>\
@@ -223,6 +277,6 @@ jQuery(document).ready(function() {
 	});
 
 	// jQuery Atmosphere
-    subSocket = jQuery.atmosphere.subscribe(request);
+//    subSocket = jQuery.atmosphere.subscribe(request);
     
 });

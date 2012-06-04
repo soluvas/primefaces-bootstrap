@@ -33,6 +33,8 @@
 	<h:outputScript library="primefaces" name="jquery/jquery.js"/>
 	<h:outputScript library="js" name="underscore-min.js"/>
 	<h:outputScript library="js" name="backbone-min.js"/>
+	<h:outputScript library="js" name="sockjs-0.3.min.js"/>
+	<h:outputScript library="js" name="stomp.js"/>
 	<h:outputScript library="jquery-ui" name="js/jquery-ui-1.8.20.custom.min.js"/>
 	<h:outputScript library="jquery-notify" name="jquery.notify.js"/>
 		
@@ -45,7 +47,10 @@
 </h:head>
 
 <h:body>
-
+<script type="text/javascript">
+//Stomp via SockJS
+WebSocketStompMock = SockJS;
+</script>
 	<div class="navbar navbar-fixed-top">
 		<div class="navbar-inner">
 			<div class="container">

@@ -118,7 +118,11 @@ Copyright (C) 2012 FuseSource, Inc. -- http://fusesource.com
         this.debug("Opening Web Socket...");
       }
       klass = WebSocketStompMock || WebSocket;
-      this.ws = new klass(this.url);
+      this.ws = new klass(this.url, null, {
+    	  debug: true,
+    	  protocols_whitelist: ["websocket","xdr-streaming","xhr-streaming","iframe-eventsource","iframe-htmlfile","xdr-polling","xhr-polling","iframe-xhr-polling","jsonp-polling"] 
+    		                   //[/*'websocket', 'xdr-streaming', 'xhr-streaming', 'iframe-eventsource', 'iframe-htmlfile', 'xdr-polling', 'xhr-polling', 'iframe-xhr-polling',*/ 'jsonp-polling'] 
+      });
       this.ws.binaryType = "arraybuffer";
       this.ws.onmessage = function(evt) {
         var data, frame, i, onreceive, view, _i, _len, _ref, _results;
