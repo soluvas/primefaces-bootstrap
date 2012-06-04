@@ -166,28 +166,28 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
     }
     
 	public void onMessage(String jsonBody) {
-		synchronized(this) {
+//		synchronized(this) {
 			try {
 				logger.info(
 						"{} consumes {}",
 						getID(),
 						StringUtils.abbreviate(
 								StringUtils.replace(jsonBody, "\n", " "), 140));
-				BroadcasterFuture<Object> f = new BroadcasterFuture<Object>(
-						jsonBody);
-				try {
-					Object newMsg = filter(jsonBody);
-					push(new Entry(newMsg, null, f, jsonBody));
-				} finally {
-					f.done();
-				}
+//				BroadcasterFuture<Object> f = new BroadcasterFuture<Object>(
+//						jsonBody);
+//				try {
+//					Object newMsg = filter(jsonBody);
+//					push(new Entry(newMsg, null, f, jsonBody));
+//				} finally {
+//					f.done();
+//				}
 	
-				// broadcastReceivedMessage(jsonBody); // this doesn't work. two consecutive broadcasts are broadcasted as one concatenated string
-				Thread.sleep(100); // FIXME: How do I avoid this? Even with this, two immediately consecutive broadcasts are not always broadcasted properly
+				 broadcastReceivedMessage(jsonBody); // this doesn't work. two consecutive broadcasts are broadcasted as one concatenated string
+//				Thread.sleep(100); // FIXME: How do I avoid this? Even with this, two immediately consecutive broadcasts are not always broadcasted properly
 			} catch (Exception ex) {
 				logger.warn("Failed to broadcast message " + jsonBody, ex);
 			}
-		}
+//		}
 	}
     
     public void subscribeTopic(String topicName, String filterName, String filterValue) {

@@ -45,6 +45,10 @@
             <param-name>org.atmosphere.servlet</param-name>
             <param-value>org.soluvas.primefacesbootstrap.MeteorChat</param-value>
         </init-param>
+		<init-param>
+			<param-name>org.atmosphere.cpr.AtmosphereInterceptor</param-name>
+			<param-value>org.atmosphere.client.MessageLengthInterceptor</param-value>
+		</init-param>
         <init-param>
             <param-name>org.atmosphere.useWebSocket</param-name>
             <param-value>true</param-value>
