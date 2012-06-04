@@ -20,7 +20,56 @@ Here's the object tree:
 Note that subscribing to a product channel is not the same as a Person liking a product. Subscribing is an infrastructural action done by the JS push client to the push message broker.
 Liking a product is a business domain action (which can be implemented using a messaging broker but not at all related to a push message broker broadcasting events to JS push clients).
 
-In standalone.xml or hornetq-jms.xml you need to declare x topics:
+_Tip:_ Do **not** use the JBoss AS7 built-in HornetQ, you'll have headaches debugging exceptions, OOM errors, etc. Run a standalone HornetQ or use any Stomp-capable server (ApacheMQ, RabbitMQ, etc.).  
+
+@hornetq-users.xml@ :
+
+bc.. 
+   <defaultuser name="guest" password="password">
+      <role name="guest"/>
+   </defaultuser>
+
+p. @hornetq-jms.xml@ :
+
+bc. 
+<topic name="person">
+	<entry name="/topic/person"/>
+</topic>
+<topic name="person.notification">
+	<entry name="/topic/person.notification"/>
+</topic>
+<topic name="person.notification.private">
+	<entry name="/topic/person.notification.private"/>
+</topic>
+<topic name="product">
+	<entry name="/topic/product"/>
+</topic>
+<topic name="product.story">
+	<entry name="/topic/product.story"/>
+</topic>
+<topic name="product.comment">
+	<entry name="/topic/product.comment"/>
+</topic>
+<topic name="product.notification">
+	<entry name="/topic/product.notification"/>
+</topic>
+
+p. @hornetq-configuration.xml@ :
+
+bc.. 
+	<acceptor name="stomp-acceptor">
+		<factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
+		<param key="protocol" value="stomp"/>
+		<param key="port" value="61613"/>
+	</acceptor>
+
+	<acceptor name="stomp-ws-acceptor">
+		<factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
+		<param key="protocol" value="stomp_ws"/>
+		<param key="port" value="61614"/>
+	</acceptor>
+
+p. In standalone.xml or hornetq-jms.xml you need to declare x topics:
 
 1. @topic/person@
 2. @topic/person/notification@

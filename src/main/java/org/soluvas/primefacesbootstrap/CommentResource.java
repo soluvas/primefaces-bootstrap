@@ -63,6 +63,8 @@ import org.soluvas.push.CollectionUpdate;
 import org.soluvas.push.Notification;
 import org.soluvas.push.PushMessage;
 
+import pk.aamir.stompj.Connection;
+
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.base.Function;
@@ -90,7 +92,7 @@ public class CommentResource {
 	private TransientRepository repository;
 	public static CamelContext camel;
 	ProducerTemplate producer;
-	@Resource(mappedName="java:/ConnectionFactory") ConnectionFactory jmsFactory;
+	private Connection conn;
 	
 	public static class Subscriber {
 		String trackingId;
@@ -233,17 +235,21 @@ public class CommentResource {
 			commentRoot = root.getNode("comment");
 		}
 		
+		conn = new Connection("localhost", 61613, "guest", "password");
+		conn.connect();
+		
 		camel = new DefaultCamelContext();
-		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(jmsFactory)));
-		camel.start();
+//		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(jmsFactory)));
+//		camel.start();
 		producer = camel.createProducerTemplate();
-		producer.start();
+//		producer.start();
 		started = true;
 	}
 
 	@PreDestroy
 	public void destroy() throws Exception {
 		started = false;
+		conn.disconnect();
 		producer.stop();
 		camel.stop();
 		session.logout();
@@ -266,13 +272,10 @@ public class CommentResource {
 		notificationNumber++;
 	}
 	
-	protected Broadcaster getBroadcaster() {
-		return BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true);
-	}
-	
 	protected void sendToProductTopic(PushMessage push) {
-		producer.sendBodyAndHeader("jms:topic:product?deliveryPersistent=false", ExchangePattern.InOnly,
-				JsonUtils.asJson(push), "productId", "zibalabel_t01");
+		conn.send(JsonUtils.asJson(push), "jms.topic.product");
+//		producer.sendBodyAndHeader("jms:topic:product?deliveryPersistent=false", ExchangePattern.InOnly,
+//				JsonUtils.asJson(push), "productId", "zibalabel_t01");
 	}
 
 	@GET
