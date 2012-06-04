@@ -131,7 +131,7 @@ public class AmqpBroadcaster extends AbstractBroadcasterProxy {
     	try {
 			DeclareOk exchangeDeclare = channel.exchangeDeclare(amqpExchange, "fanout", true);
 			logger.info("Exchange declare {}", exchangeDeclare);
-			BindOk queueBind = channel.queueBind(queue, amqpExchange, amqpExchange);
+			BindOk queueBind = channel.queueBind(queue, amqpExchange, "");
 			logger.info("Queue bind {}", queueBind);
 		} catch (IOException e) {
 			logger.error("Subscribe " + topicName, e);

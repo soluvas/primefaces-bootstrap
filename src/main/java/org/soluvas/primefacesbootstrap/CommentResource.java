@@ -145,7 +145,7 @@ public class CommentResource {
 	
 	protected void sendToProductTopic(PushMessage push) {
 		try {
-			channel.basicPublish("product", "product", new AMQP.BasicProperties.Builder().build(), JsonUtils.asJson(push).getBytes());
+			channel.basicPublish("product", "", new AMQP.BasicProperties.Builder().build(), JsonUtils.asJson(push).getBytes());
 		} catch (IOException e) {
 			throw new RuntimeException("Publish " + push, e);
 		}
