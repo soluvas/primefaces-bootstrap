@@ -28,6 +28,7 @@ request.onMessage = function (response) {
 //        	}
         }
         if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
+        	console.info('Notification', json.entry.message);
     		jQuery('#growl-container').notify('create', {text: json.entry.message});
         }
         if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {

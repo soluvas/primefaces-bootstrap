@@ -61,6 +61,7 @@ import org.atmosphere.plugin.jms.JMSBroadcaster;
 import org.atmosphere.util.AbstractBroadcasterProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.soluvas.primefacesbootstrap.CommentResource;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
@@ -116,11 +117,11 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
             Context ctx = new InitialContext();
             ConnectionFactory connectionFactory = (ConnectionFactory) ctx.lookup(namespace + factoryName);
 
-    		camel = new DefaultCamelContext();
-    		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(connectionFactory)));
-    		camel.start();
-    		producer = camel.createProducerTemplate();
-    		producer.start();
+//    		camel = new DefaultCamelContext();
+//    		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(connectionFactory)));
+//    		camel.start();
+//    		producer = camel.createProducerTemplate();
+//    		producer.start();
         } catch (Exception e) {
             String msg = "Unable to configure JMSBroadcaster";
             logger.error(msg, e);
@@ -163,16 +164,21 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
     @Override
     public void setID(String id) {
         super.setID(id);
+        CommentResource.addProcessor(id, new Processor() {
+			@Override
+			public void process(Exchange exchange) throws Exception {
+				onMessage((String)exchange.getIn().getBody());
+			}
+		});
     }
     
 	public void onMessage(String jsonBody) {
 //		synchronized(this) {
 			try {
-				logger.info(
-						"{} consumes {}",
-						getID(),
+				logger.info("{}:{} consumes {}", new Object[] {
+						getID(), destroyed,
 						StringUtils.abbreviate(
-								StringUtils.replace(jsonBody, "\n", " "), 140));
+								StringUtils.replace(jsonBody, "\n", " "), 140) });
 //				BroadcasterFuture<Object> f = new BroadcasterFuture<Object>(
 //						jsonBody);
 //				try {
@@ -191,36 +197,37 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
 	}
     
     public void subscribeTopic(String topicName, String filterName, String filterValue) {
-    	String consumerName = "jms:topic:" + topicName;// + "?selector=" + filterName + "%3D" + filterValue;
-    	if (subscribedEndpoints.contains(consumerName)) {
-    		logger.warn("{} Ignoring subscribing using existing consumer {}", getID(), consumerName);
-    		return;
-    	}
-        try {
-			logger.info("{} Subscribing to {}", new Object[] { getID(), consumerName });
-			subscribedEndpoints.add(consumerName);
-			reloadRoutes();
-//			MessageConsumer consumer = consumerSession.createConsumer(topic, selector);
-//            consumer.setMessageListener(new MessageListener() {
-//                @Override
-//                public void onMessage(Message msg) {
-//                    try {
-//                    	logger.info("{} consumes {}", getID(), msg);
-//                    	msg.acknowledge();
-//                    	TextMessage textMessage = (TextMessage) msg;
-//                    	broadcastReceivedMessage(textMessage.getText());
-////                        ObjectMessage objMessage = (ObjectMessage) msg;
-////                        ObjectMapper mapper = new ObjectMapper();
-////                        String objStr = mapper.writeValueAsString(objMessage.getObject());
-////                        broadcastReceivedMessage(objStr);
-//                    } catch (Exception ex) {
-//                        logger.warn("Failed to broadcast message "+ msg, ex);
-//                    }
-//                }
-//            });
-		} catch (Exception e) {
-			throw new RuntimeException("Cannot subscribe to +"+ topicName + " with "+ filterName +"="+ filterValue, e);
-		}
+    	CommentResource.subscribe(getID(), topicName, filterName, filterValue);
+//    	String consumerName = "jms:topic:" + topicName;// + "?selector=" + filterName + "%3D" + filterValue;
+//    	if (subscribedEndpoints.contains(consumerName)) {
+//    		logger.warn("{} Ignoring subscribing using existing consumer {}", getID(), consumerName);
+//    		return;
+//    	}
+//        try {
+//			logger.info("{} Subscribing to {}", new Object[] { getID(), consumerName });
+//			subscribedEndpoints.add(consumerName);
+//			reloadRoutes();
+////			MessageConsumer consumer = consumerSession.createConsumer(topic, selector);
+////            consumer.setMessageListener(new MessageListener() {
+////                @Override
+////                public void onMessage(Message msg) {
+////                    try {
+////                    	logger.info("{} consumes {}", getID(), msg);
+////                    	msg.acknowledge();
+////                    	TextMessage textMessage = (TextMessage) msg;
+////                    	broadcastReceivedMessage(textMessage.getText());
+//////                        ObjectMessage objMessage = (ObjectMessage) msg;
+//////                        ObjectMapper mapper = new ObjectMapper();
+//////                        String objStr = mapper.writeValueAsString(objMessage.getObject());
+//////                        broadcastReceivedMessage(objStr);
+////                    } catch (Exception ex) {
+////                        logger.warn("Failed to broadcast message "+ msg, ex);
+////                    }
+////                }
+////            });
+//		} catch (Exception e) {
+//			throw new RuntimeException("Cannot subscribe to +"+ topicName + " with "+ filterName +"="+ filterValue, e);
+//		}
     }
     
     public void unsubscribeTopic(final String topicName) {
@@ -268,15 +275,17 @@ public class AdvancedJmsBroadcaster extends AbstractBroadcasterProxy {
      */
     @Override
     public synchronized void releaseExternalResources() {
-        try {
-            producer.stop();
-        } catch (Throwable ex) {
-            logger.warn("releaseExternalResources: close consumerSession", ex);
-        }
-        try {
-        	camel.stop();
-        } catch (Throwable ex) {
-            logger.warn("releaseExternalResources: close connection", ex);
-        }
+    	logger.warn("Destroying broadcaster {}", getID());
+    	CommentResource.removeProcessor(getID());
+//        try {
+//            producer.stop();
+//        } catch (Throwable ex) {
+//            logger.warn("releaseExternalResources: close consumerSession", ex);
+//        }
+//        try {
+//        	camel.stop();
+//        } catch (Throwable ex) {
+//            logger.warn("releaseExternalResources: close connection", ex);
+//        }
     }
 }
