@@ -3,19 +3,10 @@ package org.soluvas.primefacesbootstrap;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.Set;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
-import javax.ejb.Schedule;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.jcr.Node;
@@ -23,7 +14,6 @@ import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.SimpleCredentials;
-import javax.jms.ConnectionFactory;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -35,24 +25,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.camel.CamelContext;
 import org.apache.camel.CamelExecutionException;
-import org.apache.camel.Exchange;
-import org.apache.camel.ExchangePattern;
-import org.apache.camel.Processor;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.Service;
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.jms.JmsComponent;
-import org.apache.camel.component.jms.JmsConfiguration;
-import org.apache.camel.impl.DefaultCamelContext;
-import org.apache.camel.model.RouteDefinition;
-import org.apache.camel.spi.RouteStartupOrder;
-import org.apache.camel.spi.ShutdownStrategy;
 import org.apache.jackrabbit.core.TransientRepository;
-import org.atmosphere.cpr.Broadcaster;
-import org.atmosphere.cpr.BroadcasterFactory;
-import org.atmosphere.plugin.jms.JMSBroadcaster;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,18 +37,15 @@ import org.soluvas.push.CollectionUpdate;
 import org.soluvas.push.Notification;
 import org.soluvas.push.PushMessage;
 
-import pk.aamir.stompj.Connection;
-
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 
 /**
  * @author ceefour
@@ -90,170 +61,70 @@ public class CommentResource {
 	private Session session;
 	private Node commentRoot;
 	private TransientRepository repository;
-	public static CamelContext camel;
-	ProducerTemplate producer;
 	private Connection conn;
+	private Channel channel;
 	
-	public static class Subscriber {
-		String trackingId;
-		String topicName;
-		String filterName;
-		String filterValue;
-		public Subscriber(String trackingId, String topicName,
-				String filterName, String filterValue) {
-			super();
-			this.trackingId = trackingId;
-			this.topicName = topicName;
-			this.filterName = filterName;
-			this.filterValue = filterValue;
-		}
-		
-	}
-	private static Map<String, Processor> processors = new HashMap<String, Processor>();
-	private static List<Subscriber> subscribers = new ArrayList<CommentResource.Subscriber>();
-	private static Map<String, Set<String>> routes = new HashMap<String, Set<String>>();
 	private static boolean started = false;
-	
-	public synchronized static void subscribe(final String trackingId, final String topicName, final String filterName, final String filterValue) {
-		String fromUri = "jms:topic:" + topicName;// + "?selector=" + filterName + "%3D" + filterValue;
-		String toUri = "seda:" + trackingId;
-		Set<String> route = routes.get(fromUri);
-		if (route != null) {
-			if (!route.contains(toUri)) {
-				log.info("Subscribing from {} to {}", fromUri, toUri);
-				route.add(toUri);
-			}
-		} else {
-			log.info("Subscribing from {} to {}", fromUri, toUri);
-			routes.put(fromUri, Sets.newHashSet(toUri));
-		}
-		reloadRoutes();
-//		try {
-//			Subscriber existing = Iterables.find(subscribers, new Predicate<CommentResource.Subscriber>(){
-//				@Override
-//				public boolean apply(Subscriber input) {
-//					return (trackingId.equals(input.trackingId) && topicName.equals(input.topicName)
-//							&& filterName.equals(input.filterName) && filterValue.equals(input.filterValue));
-//				}
-//			});
-//			log.warn("Skipping subscribe from {} to {}", fromUri, toUri);
-//		} catch (NoSuchElementException e) {
-//			log.info("Subscribing from {} to {}", fromUri, toUri);
-//			subscribers = Lists.asList(new Subscriber(trackingId, topicName, filterName, filterValue), subscribers.toArray(new Subscriber[] {}));
-//			reloadRoutes();
-//		}
-	}
-	
-	public synchronized static void addProcessor(final String trackingId, final Processor processor) {
-		String toUri = "seda:" + trackingId;
-		if (processors.containsKey(trackingId)) {
-			log.warn("Skipping processor {}", toUri);
-		} else {
-			log.info("Adding processor {}", toUri);
-			processors.put(trackingId, processor);
-			reloadRoutes();
-		}
-	}
-	
-	public synchronized static void removeProcessor(final String trackingId) {
-		String toUri = "seda:" + trackingId;
-		log.info("Removing processor {}", toUri);
-
-//		subscribers = ImmutableList.copyOf( Iterables.filter(subscribers, new Predicate<CommentResource.Subscriber>(){
-//			@Override
-//			public boolean apply(Subscriber input) {
-//				return !trackingId.equals(input.trackingId);
-//			}
-//		}) );
-		for (Set<String> dests : routes.values()) {
-			dests.remove(toUri);
-		}
-		routes = Maps.filterValues(routes, new Predicate<Set<String>>() {
-			@Override
-			public boolean apply(Set<String> input) {
-				return !input.isEmpty();
-			}
-			
-		});
-		processors.remove(trackingId);
-		
-		reloadRoutes();
-	}
-	
-	public synchronized static void reloadRoutes() {
-    	try {
-    		log.info("Reloading routes");
-    		started = false;
-    		camel.suspend();
-			camel.removeRouteDefinitions(ImmutableList.copyOf(camel.getRouteDefinitions()));
-			camel.resume();
-			camel.addRoutes(new RouteBuilder() {
-				@Override
-				public void configure() throws Exception {
-					// Processors
-					for (Entry<String, Processor> entry : processors.entrySet()) {
-						String toUri = "seda:" + entry.getKey();
-						log.info("Routing processor {}", toUri);
-						from(toUri).throttle(1).process(entry.getValue());
-					}
-					for (Entry<String, Set<String>> entry : routes.entrySet()) {
-						log.info("Subscribing {} to {}", entry.getKey(), entry.getValue());
-						from(entry.getKey()).to(entry.getValue().toArray(new String[] {}));
-					}
-					// Subscribers
-//					for (Subscriber subscriber : subscribers) {
-//						String fromUri = "jms:topic:" + subscriber.topicName;// + "?selector=" + filterName + "%3D" + filterValue;
-//						String toUri = "seda:" + subscriber.trackingId;
-//						log.info("Subscribing {} to {}", fromUri, toUri);
-//						from(fromUri).multicast().to(toUri);
-//					}
-				}
-			});
-			started = true;
-		} catch (Exception e) {
-			throw new RuntimeException("reloadRoutes", e);
-		}
-	}
 	
 	@PostConstruct
 	public void init() throws Exception {
 		log.info("Starting CommentResource");
 		repository = new TransientRepository(new File("/home/ceefour/git/primefaces-bootstrap/jcr-data"));
-		session = repository.login(new SimpleCredentials("TestUser", "".toCharArray())); 
-		
-		String user = session.getUserID();
-		String name = repository.getDescriptor(Repository.REP_NAME_DESC);
-		log.info("Logged in as {} to a {} repository.", user, name);
-		
-		Node root = session.getRootNode();
-		if (!root.hasNode("comment")) {
-			log.info("Creating comment root node under {}", root);
-			commentRoot = root.addNode("comment");
-			log.info("Created comment root node: {} - {}", commentRoot.getIdentifier(), commentRoot.getPath());
-			session.save();
-		} else {
-			commentRoot = root.getNode("comment");
+		try {
+			session = repository.login(new SimpleCredentials("TestUser", "".toCharArray())); 
+			
+			String user = session.getUserID();
+			String name = repository.getDescriptor(Repository.REP_NAME_DESC);
+			log.info("Logged in as {} to a {} repository.", user, name);
+			
+			Node root = session.getRootNode();
+			if (!root.hasNode("comment")) {
+				log.info("Creating comment root node under {}", root);
+				commentRoot = root.addNode("comment");
+				log.info("Created comment root node: {} - {}", commentRoot.getIdentifier(), commentRoot.getPath());
+				session.save();
+			} else {
+				commentRoot = root.getNode("comment");
+			}
+			
+			ConnectionFactory connFactory = new ConnectionFactory();
+			connFactory.setUri("amqp://guest:guest@localhost/%2F");
+//    	connFactory.setHost("localhost");
+//    	connFactory.setVirtualHost("/");
+//    	connFactory.setUsername("guest");
+//    	connFactory.setPassword("guest");
+			log.info("Connecting to {}", connFactory);
+			conn = connFactory.newConnection();
+			channel = conn.createChannel();
+			channel.exchangeDeclare("product", "fanout", true);
+			started = true;
+		} catch (Exception e) {
+			if (session != null && session.isLive())
+				session.logout();
+			if (repository != null)
+				repository.shutdown();
+			throw new RuntimeException("init", e);
 		}
-		
-		conn = new Connection("localhost", 61613, "guest", "password");
-		conn.connect();
-		
-		camel = new DefaultCamelContext();
-//		camel.addComponent("jms", new JmsComponent(new JmsConfiguration(jmsFactory)));
-//		camel.start();
-		producer = camel.createProducerTemplate();
-//		producer.start();
-		started = true;
 	}
 
 	@PreDestroy
 	public void destroy() throws Exception {
+		log.debug("Destroying CommentResource");
 		started = false;
-		conn.disconnect();
-		producer.stop();
-		camel.stop();
-		session.logout();
-		repository.shutdown();
+		try {
+			log.debug("Destroying channel");
+			channel.close();
+			log.debug("Destroying connection");
+			conn.close();
+		} catch (Exception e) {
+			log.warn("Close AMQP", e);
+		}
+		log.debug("Destroying session");
+		if (session != null && session.isLive())
+			session.logout();
+		log.debug("Destroying repository");
+		if (repository != null)
+			repository.shutdown();
 	}
 	
 	static long notificationNumber = 1L;
@@ -264,16 +135,21 @@ public class CommentResource {
 		
 		log.debug("Generating two notifications {}", notificationNumber);
 		Notification notification = new Notification("Count A " + notificationNumber);
-		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
+		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
 		notificationNumber++;
 		
 		notification = new Notification("Count B " + notificationNumber);
-		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
+		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
 		notificationNumber++;
 	}
 	
 	protected void sendToProductTopic(PushMessage push) {
-		conn.send(JsonUtils.asJson(push), "jms.topic.product");
+		try {
+			channel.basicPublish("product", "product", new AMQP.BasicProperties.Builder().build(), JsonUtils.asJson(push).getBytes());
+		} catch (IOException e) {
+			throw new RuntimeException("Publish " + push, e);
+		}
+//		conn.send(JsonUtils.asJson(push), "jms.topic.product");
 //		producer.sendBodyAndHeader("jms:topic:product?deliveryPersistent=false", ExchangePattern.InOnly,
 //				JsonUtils.asJson(push), "productId", "zibalabel_t01");
 	}

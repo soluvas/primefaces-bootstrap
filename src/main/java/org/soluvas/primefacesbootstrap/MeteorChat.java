@@ -13,9 +13,8 @@ import org.atmosphere.cpr.BroadcasterFactory;
 import org.atmosphere.cpr.Meteor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.soluvas.push.AdvancedJmsBroadcaster;
+import org.soluvas.push.AmqpBroadcaster;
 import org.soluvas.push.PushMessage;
-import org.soluvas.push.StompBroadcaster;
 import org.soluvas.push.SubscribeTopic;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,7 +45,7 @@ public class MeteorChat extends HttpServlet {
 
 //		m.setBroadcaster(BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true));
 //		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
-		StompBroadcaster broadcaster = getBroadcaster(trackingId);
+		AmqpBroadcaster broadcaster = getBroadcaster(trackingId);
 		m.setBroadcaster(broadcaster);
 		m.resumeOnBroadcast(m.transport() == LONG_POLLING ? true : false)
 				.suspend(-1);
@@ -67,7 +66,7 @@ public class MeteorChat extends HttpServlet {
 			throws IOException {
 		String trackingId = req.getHeader("X-Atmosphere-tracking-id");
 //		AdvancedJmsBroadcaster broadcaster = (AdvancedJmsBroadcaster) BroadcasterFactory.getDefault().lookup(AdvancedJmsBroadcaster.class, trackingId, true);
-		StompBroadcaster broadcaster = getBroadcaster(trackingId);
+		AmqpBroadcaster broadcaster = getBroadcaster(trackingId);
 		
 		ObjectMapper mapper = new ObjectMapper();
 		PushMessage message = mapper.readValue(req.getReader(), PushMessage.class);
@@ -78,8 +77,9 @@ public class MeteorChat extends HttpServlet {
 		}
 	}
 	
-	protected StompBroadcaster getBroadcaster(String trackingId) {
-		StompBroadcaster broadcaster = (StompBroadcaster)BroadcasterFactory.getDefault().lookup(StompBroadcaster.class, trackingId, true);
+	protected AmqpBroadcaster getBroadcaster(String trackingId) {
+//		StompBroadcaster broadcaster = (StompBroadcaster)BroadcasterFactory.getDefault().lookup(StompBroadcaster.class, trackingId, true);
+		AmqpBroadcaster broadcaster = (AmqpBroadcaster)BroadcasterFactory.getDefault().lookup(AmqpBroadcaster.class, trackingId, true);
 		return broadcaster;
 	}
 
