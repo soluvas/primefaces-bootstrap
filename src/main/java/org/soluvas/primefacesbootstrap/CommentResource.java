@@ -61,6 +61,7 @@ import org.soluvas.push.CollectionAdd;
 import org.soluvas.push.CollectionDelete;
 import org.soluvas.push.CollectionUpdate;
 import org.soluvas.push.Notification;
+import org.soluvas.push.PushMessage;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -268,11 +269,15 @@ public class CommentResource {
 	protected Broadcaster getBroadcaster() {
 		return BroadcasterFactory.getDefault().lookup(JMSBroadcaster.class, "/topic/test", true);
 	}
+	
+	protected void sendToProductTopic(PushMessage push) {
+		producer.sendBodyAndHeader("jms:topic:product?deliveryPersistent=false", ExchangePattern.InOnly,
+				JsonUtils.asJson(push), "productId", "zibalabel_t01");
+	}
 
 	@GET
 	public List<Comment> findAll() throws RepositoryException {
 		log.info("find all comments");
-		
 		List<Comment> comments = Lists.newArrayList( Iterators.transform(commentRoot.getNodes(), new Function<Node, Comment>() {
 			@Override
 			public Comment apply(Node node) {
@@ -293,14 +298,11 @@ public class CommentResource {
 		commentNode.setProperty("lastModified", comment.getLastModified().toGregorianCalendar());
 		session.save();
 		
-//		CollectionPush<Comment> push = new CollectionPush<Comment>("add", "comment", comment);
-//		getBroadcaster().broadcast(JsonUtils.asJson(push));
 		CollectionAdd<Comment> push = new CollectionAdd<Comment>("comment", comment);
-//		producer.sendBodyAndHeader("jms:topic:product", push, "productId", "zibalabel_t01");
-		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
+		sendToProductTopic(push);
 		
 		Notification notification = new Notification(comment.getAuthorName() +" berkomentar: "+ comment.getBody());
-		producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
+		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
 		
 		return Response.created(URI.create(comment.getId()))
 				.entity(comment).build();
@@ -327,13 +329,11 @@ public class CommentResource {
 			commentNode.remove();
 			session.save();
 			
-//			CollectionPush<Comment> push = new CollectionPush<Comment>("delete", "comment", comment);
-//			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			CollectionDelete push = new CollectionDelete("comment", commentId);
-			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			sendToProductTopic(push);
 			
 			Notification notification = new Notification("Komentar dari "+ comment.getAuthorName() +" dihapus.");
-			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
+			sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
 			
 			return Response.noContent().build();
 		} catch (Exception e) {
@@ -352,13 +352,11 @@ public class CommentResource {
 			
 			Comment updatedComment = new Comment(commentNode);
 			
-//			CollectionPush<Comment> push = new CollectionPush<Comment>("update", "comment", updatedComment);
-//			getBroadcaster().broadcast(JsonUtils.asJson(push));
 			CollectionUpdate<Comment> push = new CollectionUpdate<Comment>("comment", commentId, updatedComment);
-			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(push), "productId", "zibalabel_t01");
+			sendToProductTopic(push);
 			
 			Notification notification = new Notification(comment.getAuthorName() +" menyunting komentarnya.");
-			producer.sendBodyAndHeader("jms:topic:product", ExchangePattern.InOnly, JsonUtils.asJson(new CollectionAdd<Notification>("notification", notification)), "productId", "zibalabel_t01");
+			sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
 			
 			return comment;
 		} catch (Exception e) {

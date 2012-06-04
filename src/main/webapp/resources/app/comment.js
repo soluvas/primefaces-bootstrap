@@ -28,7 +28,7 @@ request.onMessage = function (response) {
 //        	}
         }
         if (json['@class'] == 'org.soluvas.push.CollectionAdd' && json.collectionName == 'notification') {
-        	console.info('Notification', json.entry.message);
+        	notificationCount.set('count', notificationCount.get('count') + 1);
     		jQuery('#growl-container').notify('create', {text: json.entry.message});
         }
         if (json['@class'] == 'org.soluvas.push.CollectionDelete' && json.collectionName == 'comment') {
@@ -106,6 +106,22 @@ var CommentList = Backbone.Collection.extend({
 		});
 	}
 });
+
+var NotificationCount = Backbone.Model.extend({
+	defaults: {count: 0},
+	initialize: function(args) {
+		_.bindAll(this, 'render');
+		this.on('change', this.render);
+	},
+	render: function() {
+		console.info('notificationCount render', this.get('count'));
+		var template = '';
+		if (this.get('count') > 0)
+			template = _.template('<span style="background: red; color: white"> <%=count%> </span>', {count: this.get('count')});
+		jQuery('#notification-count').html(template);
+	}
+});
+var notificationCount = new NotificationCount;
 
 var CommentView = Backbone.View.extend({
 	tagName: 'li',
@@ -201,6 +217,9 @@ jQuery(document).ready(function() {
 	});
 	jQuery('#test-push').bind('click', function() {
 		jQuery('#growl-container').notify('create', {title: 'Wah keren', text: 'Maknyus gan'});
+	});
+	jQuery('#notification-count').bind('click', function() {
+		notificationCount.set('count', 0);
 	});
 
 	// jQuery Atmosphere
