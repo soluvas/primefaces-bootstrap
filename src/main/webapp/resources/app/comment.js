@@ -8,7 +8,7 @@ client.debug = function(x) { console.debug(x); };
 //  client.send('/topic/test', {}, data);
 //});
 client.connect('guest', 'guest', function(x) {
-	id = client.subscribe("/exchange/product", function(d) {
+	id = client.subscribe("/topic/product.zibalabel_t01", function(d) {
 	    var message = d.body;
 	    try {
 	        var json = JSON.parse(message);

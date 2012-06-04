@@ -4,15 +4,46 @@ h2. Curl Configuration
 
 bc. export BASE_URI='http://localhost:9080/primefaces-bootstrap'
 
+h2. RabbitMQ-Stomp-Web
+
+Setup instructions:
+
+http://www.rabbitmq.com/blog/2012/05/14/introducing-rabbitmq-web-stomp/
+
+1. You need at least Erlang R14 (more info).
+2. You need Rabbitmq-server 2.8.2 installed
+3. Grab the needed erlang plugin .ez files:
+
+bc. wget \
+  http://www.rabbitmq.com/releases/plugins/v2.8.2-web-stomp-preview/cowboy-0.5.0-rmq2.8.2-git4b93c2d.ez \
+  http://www.rabbitmq.com/releases/plugins/v2.8.2-web-stomp-preview/sockjs-0.2.1-rmq2.8.2-gitfa1db96.ez \
+  http://www.rabbitmq.com/releases/plugins/v2.8.2-web-stomp-preview/rabbitmq_web_stomp-2.8.2.ez \
+  http://www.rabbitmq.com/releases/plugins/v2.8.2-web-stomp-preview/rabbitmq_web_stomp_examples-2.8.2.ez
+
+4. Next, copy them to the plugins directory. For example, on my Ubuntu box this will be:
+
+bc. sudo cp -v *.ez /usr/lib/rabbitmq/lib/rabbitmq_server-2.8.2/plugins
+sudo chmod -c a-x /usr/lib/rabbitmq/lib/rabbitmq_server-2.8.2/plugins/*.ez
+
+5. Now, you're ready to enable them using @rabbitmq-plugins@:
+
+bc. rabbitmq-plugins enable rabbitmq_web_stomp
+rabbitmq-plugins enable rabbitmq_web_stomp-examples
+
+6. Restart the rabbitmq server. On ubuntu:
+
+bc. sudo service rabbitmq-server restart
+
+
 h2. Routing Plan
 
-Here's the object tree:
+All destinations are AMQP Topics. The following are the routing keys:
 
-* @person[personId]@. Subscribing to a person gets all public events about that person (which currently is none). Filter on @personId@ header.
+* @person.{personId}@. Subscribing to a person gets all public events about that person (which currently is none). Filter on @personId@ header.
 ** @notification@ (public). Subscribing to a person's notification channel gets all public events for that person.
 ** @notification_private@ (private). Subscribing to a person's notification channel gets all private events monitored by that person.
    This is a privileged operation and requires proper access token/browser session.
-* @product[productId]@. Consume all @story@ collection, @comment@ collection, and @notification@ changes about a product(s). Subscribing to this topic is normally done when viewing a product page. Filter on @productId@ header. 
+* @product.{productId}@. Consume all @story@ collection, @comment@ collection, and @notification@ changes about a product(s). Subscribing to this topic is normally done when viewing a product page.
 ** @story@. Subscribing to a product's story gets all story changes. However, JS push client should simply subscribe to the product itself.
 ** @comment@. Subscribing to a product's comment gets all comment changes. However, JS push client should simply subscribe to the product itself.
 ** @notification@. Gets all new notifications.
@@ -20,99 +51,11 @@ Here's the object tree:
 Note that subscribing to a product channel is not the same as a Person liking a product. Subscribing is an infrastructural action done by the JS push client to the push message broker.
 Liking a product is a business domain action (which can be implemented using a messaging broker but not at all related to a push message broker broadcasting events to JS push clients).
 
-_Tip:_ Do **not** use the JBoss AS7 built-in HornetQ, you'll have headaches debugging exceptions, OOM errors, etc. Run a standalone HornetQ or use any Stomp-capable server (ApacheMQ, RabbitMQ, etc.).  
+h3. Client
 
-@hornetq-users.xml@ :
+When there is a change in product comment, a @CollectionAdd<Comment>@ message is sent to the @product.{productId}.comment@ topic.
 
-bc.. 
-   <defaultuser name="guest" password="password">
-      <role name="guest"/>
-   </defaultuser>
-
-p. @hornetq-jms.xml@ :
-
-bc. 
-<topic name="person">
-	<entry name="/topic/person"/>
-</topic>
-<topic name="person.notification">
-	<entry name="/topic/person.notification"/>
-</topic>
-<topic name="person.notification.private">
-	<entry name="/topic/person.notification.private"/>
-</topic>
-<topic name="product">
-	<entry name="/topic/product"/>
-</topic>
-<topic name="product.story">
-	<entry name="/topic/product.story"/>
-</topic>
-<topic name="product.comment">
-	<entry name="/topic/product.comment"/>
-</topic>
-<topic name="product.notification">
-	<entry name="/topic/product.notification"/>
-</topic>
-
-p. @hornetq-configuration.xml@ :
-
-bc.. 
-	<acceptor name="stomp-acceptor">
-		<factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
-		<param key="protocol" value="stomp"/>
-		<param key="port" value="61613"/>
-	</acceptor>
-
-	<acceptor name="stomp-ws-acceptor">
-		<factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
-		<param key="protocol" value="stomp_ws"/>
-		<param key="port" value="61614"/>
-	</acceptor>
-
-p. In standalone.xml or hornetq-jms.xml you need to declare x topics:
-
-1. @topic/person@
-2. @topic/person/notification@
-3. @topic/person/notification_private@
-4. @topic/product@
-5. @topic/product/story@
-6. @topic/product/comment@
-7. @topic/product/notification@
-
-e.g.
-
-bc.. 
-<jms-topic name="person">
-    <entry name="topic/person"/>
-</jms-topic>
-<jms-topic name="person.notification">
-    <entry name="topic/person/notification"/>
-</jms-topic>
-<jms-topic name="person.notification.private">
-    <entry name="topic/person/notification_private"/>
-</jms-topic>
-<jms-topic name="product">
-    <entry name="topic/product"/>
-</jms-topic>
-<jms-topic name="product.story">
-    <entry name="topic/product/story"/>
-</jms-topic>
-<jms-topic name="product.comment">
-    <entry name="topic/product/comment"/>
-</jms-topic>
-<jms-topic name="product.notification">
-    <entry name="topic/product/notification"/>
-</jms-topic>
-
-
-h3. Atmosphere Broadcaster ID
-
-Every Atmosphere Broadcaster is assigned one-to-one with a browser page. Every Atmosphere broadcaster is also registered in the Camel context, in order to provide routing support
-for subscribed topics.
-
-When there is a change in product comment, a @CollectionAdd<Comment>@ message with @productId@ header is sent to the @jms:topic:product/comment@ and @jms:topic:product@ endpoint.
-
-There is also notification, a @CollectionAdd<Notification>@ message with @productId@ header is sent to @jms:topic:product/notification@ and @jms:topic:product@ endpoint.
+There is also notification, a @CollectionAdd<Notification>@ is sent to @product.{productId}.notification@ topic.
 
 
 h2. JCR Resource
@@ -150,12 +93,11 @@ bc. curl -H 'Content-type: application/json' -d '{"name": "Wiwahahaha", "release
 
 h2. Push
 
-h3. Broadcasting something via curl
+h3. Broadcasting something via amqp-publish
 
-bc. curl -v $BASE_URI/meteor -d 'X'
+bc. amqp-publish -e amq.topic -r product.zibalabel_t01.comment -b '{some: "Data"}'
 
-The data content is not used, because it actually needs to use jQuery atmosphere client.
 
 h3. Broadcast something via JavaScript in browser
 
-bc. subSocket.push(JSON.stringify({ author: "Neni", text: "Yoha" }));
+See *stomp.js*-WebSocket documentation.

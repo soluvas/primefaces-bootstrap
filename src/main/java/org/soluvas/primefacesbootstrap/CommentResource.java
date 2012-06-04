@@ -90,7 +90,6 @@ public class CommentResource {
 			connFactory.setUri(messagingUri);
 			conn = connFactory.newConnection();
 			channel = conn.createChannel();
-			channel.exchangeDeclare("product", "fanout", true);
 			started = true;
 		} catch (Exception e) {
 			if (session != null && session.isLive())
@@ -129,17 +128,17 @@ public class CommentResource {
 		
 		log.debug("Generating two notifications {}", notificationNumber);
 		Notification notification = new Notification("Count A " + notificationNumber);
-		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
+		sendToProductTopic("zibalabel_t01", new CollectionAdd<Notification>("notification", notification));
 		notificationNumber++;
 		
 		notification = new Notification("Count B " + notificationNumber);
-		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
+		sendToProductTopic("zibalabel_t01", new CollectionAdd<Notification>("notification", notification));
 		notificationNumber++;
 	}
 	
-	protected void sendToProductTopic(PushMessage push) {
+	protected void sendToProductTopic(String productId, PushMessage push) {
 		try {
-			channel.basicPublish("product", "", new AMQP.BasicProperties.Builder().build(), JsonUtils.asJson(push).getBytes());
+			channel.basicPublish("amq.topic", "product." + productId, new AMQP.BasicProperties.Builder().build(), JsonUtils.asJson(push).getBytes());
 		} catch (IOException e) {
 			throw new RuntimeException("Publish " + push, e);
 		}
@@ -172,10 +171,10 @@ public class CommentResource {
 		session.save();
 		
 		CollectionAdd<Comment> push = new CollectionAdd<Comment>("comment", comment);
-		sendToProductTopic(push);
+		sendToProductTopic("zibalabel_t01", push);
 		
 		Notification notification = new Notification(comment.getAuthorName() +" berkomentar: "+ comment.getBody());
-		sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
+		sendToProductTopic("zibalabel_t01", new CollectionAdd<Notification>("notification", notification));
 		
 		return Response.created(URI.create(comment.getId()))
 				.entity(comment).build();
@@ -203,10 +202,10 @@ public class CommentResource {
 			session.save();
 			
 			CollectionDelete push = new CollectionDelete("comment", commentId);
-			sendToProductTopic(push);
+			sendToProductTopic("zibalabel_t01", push);
 			
 			Notification notification = new Notification("Komentar dari "+ comment.getAuthorName() +" dihapus.");
-			sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
+			sendToProductTopic("zibalabel_t01", new CollectionAdd<Notification>("notification", notification));
 			
 			return Response.noContent().build();
 		} catch (Exception e) {
@@ -226,10 +225,10 @@ public class CommentResource {
 			Comment updatedComment = new Comment(commentNode);
 			
 			CollectionUpdate<Comment> push = new CollectionUpdate<Comment>("comment", commentId, updatedComment);
-			sendToProductTopic(push);
+			sendToProductTopic("zibalabel_t01", push);
 			
 			Notification notification = new Notification(comment.getAuthorName() +" menyunting komentarnya.");
-			sendToProductTopic(new CollectionAdd<Notification>("notification", notification));
+			sendToProductTopic("zibalabel_t01", new CollectionAdd<Notification>("notification", notification));
 			
 			return comment;
 		} catch (Exception e) {
