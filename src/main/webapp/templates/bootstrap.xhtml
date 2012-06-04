@@ -38,7 +38,6 @@
 	<h:outputScript library="jquery-ui" name="js/jquery-ui-1.8.20.custom.min.js"/>
 	<h:outputScript library="jquery-notify" name="jquery.notify.js"/>
 		
-	<script type="text/javascript" src="#{request.contextPath}/jquery/jquery.atmosphere.js"></script>
 	<script type="text/javascript">
 	var baseUri = '#{request.contextPath}/';
 	var apiUri = baseUri + 'api/';
@@ -47,10 +46,6 @@
 </h:head>
 
 <h:body>
-<script type="text/javascript">
-//Stomp via SockJS
-WebSocketStompMock = SockJS;
-</script>
 	<div class="navbar navbar-fixed-top">
 		<div class="navbar-inner">
 			<div class="container">

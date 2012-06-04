@@ -25,7 +25,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import org.apache.camel.CamelExecutionException;
 import org.apache.jackrabbit.core.TransientRepository;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -37,8 +36,6 @@ import org.soluvas.push.CollectionUpdate;
 import org.soluvas.push.Notification;
 import org.soluvas.push.PushMessage;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -87,13 +84,10 @@ public class CommentResource {
 				commentRoot = root.getNode("comment");
 			}
 			
+			String messagingUri = "amqp://guest:guest@localhost/%2F"; 
+			log.info("Connecting to {}", messagingUri);
 			ConnectionFactory connFactory = new ConnectionFactory();
-			connFactory.setUri("amqp://guest:guest@localhost/%2F");
-//    	connFactory.setHost("localhost");
-//    	connFactory.setVirtualHost("/");
-//    	connFactory.setUsername("guest");
-//    	connFactory.setPassword("guest");
-			log.info("Connecting to {}", connFactory);
+			connFactory.setUri(messagingUri);
 			conn = connFactory.newConnection();
 			channel = conn.createChannel();
 			channel.exchangeDeclare("product", "fanout", true);
@@ -167,7 +161,7 @@ public class CommentResource {
 	}
 
 	@POST
-	public Response create(Comment comment) throws RepositoryException, CamelExecutionException, JsonGenerationException, JsonMappingException, IOException {
+	public Response create(Comment comment) throws RepositoryException {
 		log.info("create comment {}", comment);
 		
 		Node commentNode = commentRoot.addNode(comment.getId());
